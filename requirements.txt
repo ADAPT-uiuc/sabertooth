@@ -3,19 +3,15 @@ datasets==1.18.3
 ipykernel==6.9.1
 ipython==8.0.1
 ipywidgets==7.6.5
---find-links https://storage.googleapis.com/jax-releases/libtpu_releases.html
-jax[tpu]>=0.2.16
 jedi==0.18.1
 jupyter-client==7.1.2
 jupyter-core==4.9.2
 maturin==0.12.9
 ml-collections==0.1.1
 notebook==6.4.8
-optax==0.1.1
 scikit-learn==1.0.2
 sentencepiece==0.1.96
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch==1.8.1+cpu
-tqdm==4.62.3
 transformers==4.16.2
 widgetsnbextension==3.5.2
