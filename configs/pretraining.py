@@ -59,9 +59,9 @@ def get_config(config_string="base"):
             # Initial checkpoint
             "init_checkpoint": "",
             # Input files
-            "input_files": ["../prep_sabertooth/wikibooks/part-*-of-*.jsonl.zst"],
+            "input_files": ["/srv/local/shared/pre-train-datasets/enwiki-feb-doc-split/wiki_*.txt.doc.train"],
             # Pre-trained tokenizer
-            "tokenizer": "../prep_sabertooth/wikibooks_32k.model",
+            "tokenizer": "/srv/local/shared/pre-train-datasets/wiki_32k.model",
             # Whether to run training.
             "do_train": True,
             # Whether to run eval.
