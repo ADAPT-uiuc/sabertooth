@@ -27,9 +27,12 @@ fn read_extracted_wiki_documents(path: &Path) -> impl Iterator<Item = String> {
         } else if line.contains("</doc>") {
             article_open = false;
             // Skip line 0, which is just the title of the article
-            let article = article_lines[1..].join("\n");
-            article_lines.clear();
-            Some(article)
+            if !article_lines.is_empty() {
+                let article = article_lines[1..].join("\n");
+                article_lines.clear();
+                Some(article);
+            }
+            None
         } else {
             if article_open && !line.is_empty() {
                 article_lines.push(line);

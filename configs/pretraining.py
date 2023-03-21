@@ -59,9 +59,9 @@ def get_config(config_string="base"):
             # Initial checkpoint
             "init_checkpoint": "",
             # Input files
-            "input_files": ["/srv/local/shared/pre-train-datasets/enwiki-feb-doc-split/wiki_*.txt.doc.train"],
+            "input_files": ["/srv/local/shared/pre-train-mixture/wikibooks/part-*-of-00500.jsonl"],
             # Pre-trained tokenizer
-            "tokenizer": "/srv/local/shared/pre-train-datasets/wiki_32k.model",
+            "tokenizer": "/srv/local/shared/pre-train-mixture/wikibooks_32k.model",
             # Whether to run training.
             "do_train": True,
             # Whether to run eval.
@@ -85,7 +85,7 @@ def get_config(config_string="base"):
             # Maximum gradient norm (for gradient clipping)
             "max_grad_norm": 1.0,
             # Number of training steps.
-            "num_train_steps": 1000000,
+            "num_train_steps": 120000,
             # Number of warmup steps.
             "num_warmup_steps": 10000,
             # The maximum total input sequence length after tokenization.
@@ -97,7 +97,7 @@ def get_config(config_string="base"):
             # How often to save the model checkpoint.
             "save_checkpoints_steps": 10000,
             # Maximum number of eval steps.
-            "max_eval_steps": 100,
+            "max_eval_steps": 1000,
         }
     )
 
