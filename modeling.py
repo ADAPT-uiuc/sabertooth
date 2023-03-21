@@ -35,6 +35,16 @@ ACT2FN = {
     "gelu_new": nn.gelu,
 }
 
+from absl import app, flags
+from ml_collections.config_flags import config_flags
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string(
+    "output_dir",
+    None,
+    "The output directory where the model checkpoints will be written.",
+)
+config_flags.DEFINE_config_file("config", None, "Hyperparameter configuration")
 
 def get_hidden_activation(config: ConfigDict):
     return ACT2FN[config.hidden_act]
@@ -80,15 +90,28 @@ class BertModel(nn.Module):
             intermediate_activation=get_hidden_activation(self.config),
             kernel_init=get_kernel_init(self.config),
         )
-        build_self_attention = functools.partial(
-            layers.SelfAttention,
-            num_heads=self.config.num_attention_heads,
-            qkv_features=self.config.hidden_size,
-            dropout_rate=self.config.attention_probs_dropout_prob,
-            broadcast_dropout=False,
-            kernel_init=get_kernel_init(self.config),
-            bias_init=nn.initializers.zeros,
-        )
+
+        if self.config.attention_type == "Vanilla":
+            build_self_attention = functools.partial(
+                layers.SelfAttention,
+                num_heads=self.config.num_attention_heads,
+                qkv_features=self.config.hidden_size,
+                dropout_rate=self.config.attention_probs_dropout_prob,
+                broadcast_dropout=False,
+                kernel_init=get_kernel_init(self.config),
+                bias_init=nn.initializers.zeros,
+            )
+        else:
+            build_self_attention = functools.partial(
+                layers.FastSelfAttention,
+                hidden_dim=self.config.hidden_size,
+                head_dim=self.config.hidden_size / self.config.num_attention_heads,
+                num_heads=self.config.num_attention_heads,
+                dropout=self.config.attention_probs_dropout_prob,
+                downsampling_k=self.config.downsampling_k,
+                attention_type=self.config.attention_type
+            )
+
         self.encoder_layers = [
             layers.TransformerBlock(
                 build_feed_forward=build_feed_forward,
