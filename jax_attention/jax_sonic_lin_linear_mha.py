@@ -13,9 +13,6 @@ import flax.linen as nn
 
 import numpy as np
 
-import jax_attention.RFA_random_matrices.construct_random_matrices
-from jax_attention.jax_rfa_mha import random_project, load_random_matrices, build_random_matrices, _normalize
-
 import pdb ## For debugging purposes only.
 
 EPS = 1.0
@@ -29,7 +26,8 @@ class MHA(nn.Module):
     mask : bool
     downsampling_k : int = 64
     tau: float = 1.0
-    reparam_proj: bool = False
+    eps: float = 1e-6
+
 
     """
     ## For some reason putting the initializers over here doesn't seem to work.
@@ -58,24 +56,11 @@ class MHA(nn.Module):
         self.value_downsampling_mat_128 = self.param('value_downsample_mat_128', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_128, mean, sd)
         self.value_downsampling_mat_512 = self.param('value_downsample_mat_512', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_512, mean, sd)
 
-        ## Load random matrices.
-        self.random_matrices = load_random_matrices(head_dim=self.head_dim, proj_dim=self.hidden_dim)
-        if self.reparam_proj:
-            self.sigma = self.param('sigma', jax.nn.initializers.constant(1.), (self.num_heads, 1, self.head_dim))
+        ## Phi(x) = elu(x) + 1 in Linear Transformer.
+        self.elu_feature_map = lambda x: nn.elu(x) + 1
 
         ## Dropout layers.
         self.dropout_layer = nn.Dropout(0.1)
-
-
-    def sample_random_matrices(self):
-        num_random_matrices = self.random_matrices.shape[0]
-        indices = np.random.choice(
-            num_random_matrices,
-            size=self.num_heads,
-            replace=False)
-        # [num_heads, proj_dim, head_dim]
-        random_matrices = self.random_matrices[indices]
-        return random_matrices
 
 
     def __call__(self, x, *, train):
@@ -117,25 +102,20 @@ class MHA(nn.Module):
             a_v = jnp.einsum('bhqk, bkhd -> bqhd', attn_mat, values)
 
         else:
-            random_matrices = self.sample_random_matrices()
-            # random_matrices = self.random_matrices[0:self.num_heads, ...]
+            phi_q = self.elu_feature_map(queries)
+            phi_k = self.elu_feature_map(keys)
 
-            random_matrices = build_random_matrices(random_matrices=random_matrices,
-                                                          tau=self.tau,
-                                                          sigma=self.sigma if self.reparam_proj else None,
-                                                          reparam_proj=self.reparam_proj)
-
-            phi_k = random_project(x=keys, random_matrices=random_matrices)
             s = jnp.einsum("bknd, bknh -> bndh", phi_k, values)
             z = jnp.sum(phi_k, axis=1)
 
-            phi_q = random_project(x=queries, random_matrices=random_matrices)
             qs = jnp.einsum("bqnd, bndh -> bqnh", phi_q, s)
-            qz = jax.lax.clamp(EPS, jnp.abs(jnp.einsum("bqnd, bnd -> bqn", phi_q, z)), 10e9)
+            qz = jnp.einsum("bqnd, bnd -> bqn", phi_q, z) + self.eps
+
             a_v = qs / jnp.expand_dims(qz, axis=-1)
 
         ## Finally, concatenate across the head dimension.
         return a_v.reshape((a_v.shape[0], a_v.shape[1], a_v.shape[2]*a_v.shape[3]))
+
 
 """
 ## A place to unit test my Multi-Head-Attention Implementation.
@@ -146,7 +126,7 @@ hidden_dim = 15
 head_dim = 5
 num_heads = 3
 dropout = 0.1
-mask = False
+mask = True
 
 batch_size = 2
 sequence_length = 128

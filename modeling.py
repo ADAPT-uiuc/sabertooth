@@ -91,7 +91,7 @@ class BertModel(nn.Module):
             kernel_init=get_kernel_init(self.config),
         )
 
-        if self.config.attention_type == "Vanilla":
+        if self.config.attention_type == "VanillaMHA":
             build_self_attention = functools.partial(
                 layers.SelfAttention,
                 num_heads=self.config.num_attention_heads,
@@ -105,7 +105,7 @@ class BertModel(nn.Module):
             build_self_attention = functools.partial(
                 layers.FastSelfAttention,
                 hidden_dim=self.config.hidden_size,
-                head_dim=self.config.hidden_size / self.config.num_attention_heads,
+                head_dim=int(self.config.hidden_size / self.config.num_attention_heads),
                 num_heads=self.config.num_attention_heads,
                 dropout=self.config.attention_probs_dropout_prob,
                 downsampling_k=self.config.downsampling_k,
@@ -375,3 +375,43 @@ class BertForPreTraining(nn.Module):
         # because FrozenDict and python dict input structures are not identical.
         params = flax.core.freeze(params)
         return params
+
+
+"""
+from jax import random
+
+hidden_dim = 8
+head_dim = 4
+num_heads = 2
+dropout = 0.1
+sequence_length = 128
+ffn_size = 10
+num_layers = 2
+vocabulary_size = 10
+downsampling_k = 3
+batch_size = 2
+
+import configs.pretraining as cf
+config = cf.get_config()
+modelconfig = config.model
+modelconfig.attention_type = "VanillaMHA"
+modelconfig.hidden_size = 8
+modelconfig.num_attention_heads = 2
+model = BertForPreTraining(modelconfig)
+x = jnp.round(random.uniform(random.PRNGKey(44), (batch_size, sequence_length))).astype(jnp.int32)
+mask = jnp.ones((batch_size, sequence_length), dtype=jnp.int32)
+y = jnp.round(random.uniform(random.PRNGKey(44), (batch_size, sequence_length))).astype(jnp.int32)
+param_key = random.PRNGKey(42)
+dropout_key = random.PRNGKey(43)
+params = model.init(
+    {'params': param_key, 'dropout': dropout_key},
+                input_ids=x,
+                input_mask=mask,
+                type_ids=y,
+                deterministic=False,
+            )["params"]
+attn = model.apply({'params': params}, input_ids=x, input_mask=mask, type_ids=y, rngs={'dropout': dropout_key})
+print(attn)
+"""
+
+

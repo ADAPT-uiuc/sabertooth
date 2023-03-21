@@ -31,6 +31,8 @@ def get_config(config_string="base"):
                 "type_vocab_size": 2,
                 "initializer_range": 0.02,
                 "layer_norm_eps": 1e-12,
+                "attention_type": "PerfMHA",
+                "downsampling_k": 64
             }
         )
     else:
@@ -49,6 +51,8 @@ def get_config(config_string="base"):
                 "type_vocab_size": 2,
                 "initializer_range": 0.02,
                 "layer_norm_eps": 1e-12,
+                "attention_type": "PerfMHA",
+                "downsampling_k": 64
             }
         )
 

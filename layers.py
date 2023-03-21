@@ -21,7 +21,11 @@ import jax.numpy as jnp
 from flax import linen as nn
 from jax_attention.jax_lin_mha import MHA as LinMHA
 from jax_attention.jax_performer_mha import MHA as PerfMHA
-from jax_attention.jax_sonic_mha import MHA as SonicMHA
+from jax_attention.jax_sonic_mha import MHA as LinPerfMHA
+from jax_attention.jax_rfa_mha import MHA as RFAMHA
+from jax_attention.jax_sonic_lin_rfa_mha import MHA as LinRFAMHA
+from jax_attention.jax_linear_mha import MHA as LTMHA
+from jax_attention.jax_sonic_lin_linear_mha import MHA as LinLTMHA
 
 def gelu(x):
     return jax.nn.gelu(x, approximate=False)
@@ -100,7 +104,6 @@ class FastSelfAttention(nn.Module):
     head_dim: int
     num_heads: int
     dropout: float
-    mask: bool
     attention_type: str = "Vanilla"
     downsampling_k: int = 64
 
@@ -113,9 +116,24 @@ class FastSelfAttention(nn.Module):
         elif self.attention_type == "LinMHA":
             self.mha = LinMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
                                 dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+        elif self.attention_type == "LinPerfMHA":
+            self.mha = LinPerfMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+        elif self.attention_type == "LinRFAMHA":
+            self.mha = LinRFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+        elif self.attention_type == "RFAMHA":
+            self.mha = RFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                 dropout=self.dropout, mask=False)
+        elif self.attention_type == "LTMHA":
+            self.mha = LTMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                              dropout=self.dropout, mask=False)
+        elif self.attention_type == "LinLTMHA":
+            self.mha = LinLTMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                             dropout=self.dropout, mask=False)
         else:
-            self.mha = SonicMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False)
+            raise Exception("Incorrect input of attention_type!")
+
 
     @nn.compact
     def __call__(self, hidden_states, mask=None, *, deterministic=False):
