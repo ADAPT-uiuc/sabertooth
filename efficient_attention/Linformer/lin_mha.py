@@ -10,6 +10,12 @@ from jax.nn.initializers import glorot_normal
 from flax.linen import softmax
 
 import flax.linen as nn
+from flax.linen.linear import DenseGeneral, default_kernel_init
+from typing import (Any, Callable, Optional, Tuple)
+PRNGKey = Any
+Shape = Tuple[int, ...]
+Dtype = Any
+Array = Any
 
 import numpy as np
 
@@ -22,6 +28,13 @@ class MHA(nn.Module):
     dropout : float
     mask : bool
     downsampling_k : int = 64 ## Default it to 64.
+    dtype: Optional[Dtype] = None
+    param_dtype: Any = jnp.float32
+    kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
+    bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = nn.initializers.zeros
+    use_bias: bool = True
+    precision: nn.linear.PrecisionLike = None
+    numerical_stabilizer: float = 0.001
 
     """
     ## For some reason putting the initializers over here doesn't seem to work.
@@ -32,12 +45,6 @@ class MHA(nn.Module):
     value_kernel_init = jax.nn.initializers.glorot_normal
     """
     def setup(self):
-        ## Preambulatory work of setting up the initializers and weights.
-        init_shape = (self.hidden_dim, self.num_heads, self.head_dim)
-        self.query_kernel = self.param('query_kernel', jax.nn.initializers.glorot_normal(), init_shape, jnp.float32)
-        self.key_kernel = self.param('key_kernel', jax.nn.initializers.glorot_normal(), init_shape, jnp.float32)
-        self.value_kernel = self.param('value_kernel', jax.nn.initializers.glorot_normal(), init_shape, jnp.float32)
-
         ## We initialize the downsampling values here.
         downsampling_shape_128 = (self.downsampling_k, 128)
         downsampling_shape_512 = (self.downsampling_k, 512)
@@ -50,6 +57,22 @@ class MHA(nn.Module):
         self.value_downsampling_mat_128 = self.param('value_downsample_mat_128', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_128, mean, sd)
         self.value_downsampling_mat_512 = self.param('value_downsample_mat_512', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_512, mean, sd)
 
+        self.dense_queries = DenseGeneral(axis=-1, dtype=self.dtype, param_dtype=self.param_dtype, features=(self.num_heads, self.head_dim), kernel_init=self.kernel_init,
+                                          bias_init=self.bias_init, use_bias=self.use_bias, precision=self.precision, name='query')
+        self.dense_keys = DenseGeneral(axis=-1, dtype=self.dtype, param_dtype=self.param_dtype, features=(self.num_heads, self.head_dim), kernel_init=self.kernel_init,
+                                          bias_init=self.bias_init, use_bias=self.use_bias, precision=self.precision, name='key')
+        self.dense_values = DenseGeneral(axis=-1, dtype=self.dtype, param_dtype=self.param_dtype, features=(self.num_heads, self.head_dim), kernel_init=self.kernel_init,
+                                          bias_init=self.bias_init, use_bias=self.use_bias, precision=self.precision, name='value')
+        self.dense_out = DenseGeneral(features=self.hidden_dim,
+                           axis=(-2, -1),
+                           kernel_init=self.kernel_init,
+                           bias_init=self.bias_init,
+                           use_bias=self.use_bias,
+                           dtype=self.dtype,
+                           param_dtype=self.param_dtype,
+                           precision=self.precision,
+                           name='out')
+
         ## Here, we have a dropout layer.
         self.dropout_layer = nn.Dropout(0.1)
 
@@ -57,9 +80,8 @@ class MHA(nn.Module):
         ## Jax complains about passing in multiple arguments.
         ## So we do the hack of concatenating the queries, keys and values into a list and unpacking it.
         query, key, value = x
-        ## First, we downsample the keys and values.
 
-        ## First we check the sequence length of x.
+        ## First, we downsample the keys and values.
         assert all(len(i.shape) == 3 for i in x), "Incorrect size of input, should be [batch, seq length, hidden dimension]"
         if query.shape[1] == key.shape[1] == 128:
             key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_128, key)
@@ -70,10 +92,11 @@ class MHA(nn.Module):
         else:
             raise Exception("Sequence Length Must be of size 128 or 512.")
 
-        ## First, we map the queries keys and values.
-        queries = jnp.einsum('bsd, dnh -> bsnh', query, self.query_kernel)
-        keys = jnp.einsum('bsd, dnh -> bsnh', key, self.key_kernel)
-        values = jnp.einsum('bsd, dnh -> bsnh', value, self.value_kernel)
+        # project inputs_q to multi-headed q/k/v
+        # dimensions are then [batch..., length, n_heads, n_features_per_head]
+        queries, keys, values = (self.dense_queries(query),
+                                 self.dense_keys(key),
+                                 self.dense_values(value))
 
         ## Then we compute the product in between the queries and the keys.
         q_ks = jnp.einsum('bqnh, bknh -> bnqk', queries, keys) 
@@ -98,7 +121,8 @@ class MHA(nn.Module):
         a_v =  jnp.einsum('bhqk, bkhd -> bqhd', attn_mat, values)
 
         ## Finally, concatenate across the head dimension.
-        return a_v.reshape((a_v.shape[0], a_v.shape[1], a_v.shape[2]*a_v.shape[3]))
+        out = self.dense_out(a_v)
+        return out
 
 """
 ## A place to unit test my Multi-Head-Attention Implementation.

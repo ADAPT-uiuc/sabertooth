@@ -5,15 +5,20 @@ sys.path.append(os.getcwd())
 
 import jax.numpy as jnp
 import jax
-import flax.linen as nn
 from jax.nn.initializers import glorot_normal
 from flax.linen import softmax
 
 import flax.linen as nn
+from flax.linen.linear import DenseGeneral, default_kernel_init
+from typing import (Any, Callable, Optional, Tuple)
+PRNGKey = Any
+Shape = Tuple[int, ...]
+Dtype = Any
+Array = Any
 
 import numpy as np
 
-from efficient_attention.RFA.rfa_mha import random_project, load_random_matrices, build_random_matrices, _normalize
+from efficient_attention.RFA.rfa_mha import random_project, load_random_matrices, build_random_matrices
 
 import pdb ## For debugging purposes only.
 
@@ -28,7 +33,13 @@ class MHA(nn.Module):
     mask : bool
     downsampling_k : int = 64
     tau: float = 1.0
-    reparam_proj: bool = False
+    reparam_proj: bool = True
+    dtype: Optional[Dtype] = None
+    param_dtype: Any = jnp.float32
+    kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
+    bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = nn.initializers.zeros
+    use_bias: bool = True
+    precision: nn.linear.PrecisionLike = None
 
     """
     ## For some reason putting the initializers over here doesn't seem to work.
@@ -39,11 +50,6 @@ class MHA(nn.Module):
     value_kernel_init = jax.nn.initializers.glorot_normal
     """
     def setup(self):
-        ## Preambulatory work of setting up the initializers and weights.
-        init_shape = (self.hidden_dim, self.num_heads, self.head_dim)
-        self.query_kernel = self.param('query_kernel', jax.nn.initializers.glorot_uniform(), init_shape, jnp.float32)
-        self.key_kernel = self.param('key_kernel', jax.nn.initializers.glorot_uniform(), (self.hidden_dim, self.num_heads, self.head_dim))
-        self.value_kernel = self.param('value_kernel', jax.nn.initializers.glorot_uniform(), (self.hidden_dim, self.num_heads, self.head_dim))
 
         self.numerical_stabilizer = 0.001
 
@@ -61,6 +67,22 @@ class MHA(nn.Module):
         self.random_matrices = load_random_matrices(head_dim=self.head_dim, proj_dim=self.hidden_dim)
         if self.reparam_proj:
             self.sigma = self.param('sigma', jax.nn.initializers.constant(1.), (self.num_heads, 1, self.head_dim))
+
+        self.dense_queries = DenseGeneral(axis=-1, dtype=self.dtype, param_dtype=self.param_dtype, features=(self.num_heads, self.head_dim), kernel_init=self.kernel_init,
+                                          bias_init=self.bias_init, use_bias=self.use_bias, precision=self.precision, name='query')
+        self.dense_keys = DenseGeneral(axis=-1, dtype=self.dtype, param_dtype=self.param_dtype, features=(self.num_heads, self.head_dim), kernel_init=self.kernel_init,
+                                          bias_init=self.bias_init, use_bias=self.use_bias, precision=self.precision, name='key')
+        self.dense_values = DenseGeneral(axis=-1, dtype=self.dtype, param_dtype=self.param_dtype, features=(self.num_heads, self.head_dim), kernel_init=self.kernel_init,
+                                          bias_init=self.bias_init, use_bias=self.use_bias, precision=self.precision, name='value')
+        self.dense_out = DenseGeneral(features=self.hidden_dim,
+                           axis=(-2, -1),
+                           kernel_init=self.kernel_init,
+                           bias_init=self.bias_init,
+                           use_bias=self.use_bias,
+                           dtype=self.dtype,
+                           param_dtype=self.param_dtype,
+                           precision=self.precision,
+                           name='out')
 
         ## Dropout layers.
         self.dropout_layer = nn.Dropout(0.1)
@@ -92,10 +114,11 @@ class MHA(nn.Module):
         else:
             raise Exception("Input sequence length must be of size 128 or 512.")
 
-        ## First, we map the queries keys and values.
-        queries = jnp.einsum('bqd, dnh -> bqnh', query, self.query_kernel)
-        keys = jnp.einsum('bkd, dnh -> bknh', key, self.key_kernel)
-        values = jnp.einsum('bkd, dnh -> bknh', value, self.value_kernel)
+        # project inputs_q to multi-headed q/k/v
+        # dimensions are then [batch..., length, n_heads, n_features_per_head]
+        queries, keys, values = (self.dense_queries(query),
+                                 self.dense_keys(key),
+                                 self.dense_values(value))
 
         if self.mask:  ## Here, we do normal linformer-style attention.
             ## We have to multiply the queries with the keys.
@@ -134,7 +157,8 @@ class MHA(nn.Module):
             a_v = qs / jnp.expand_dims(qz, axis=-1)
 
         ## Finally, concatenate across the head dimension.
-        return a_v.reshape((a_v.shape[0], a_v.shape[1], a_v.shape[2]*a_v.shape[3]))
+        out = self.dense_out(a_v)
+        return out
 
 """
 ## A place to unit test my Multi-Head-Attention Implementation.

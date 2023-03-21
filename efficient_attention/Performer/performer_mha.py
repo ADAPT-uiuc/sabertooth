@@ -1,17 +1,20 @@
 import sys
 import os
 
+import jax.numpy as jnp
+
+import flax.linen as nn
+from flax.linen.linear import DenseGeneral, default_kernel_init
+
+import functools
+from typing import (Any, Callable, Optional, Tuple)
+
 sys.path.append(os.getcwd())
 
-import jax.numpy as jnp
-import jax
-import flax.linen as nn
-from jax.nn.initializers import glorot_normal
-from flax.linen import softmax
-
-import flax.linen as nn
-
-import numpy as np
+PRNGKey = Any
+Shape = Tuple[int, ...]
+Dtype = Any
+Array = Any
 
 import pdb ## For debugging purposes only.
 
@@ -21,6 +24,13 @@ class MHA(nn.Module):
     num_heads : int
     dropout : float
     mask : bool
+    dtype: Optional[Dtype] = None
+    param_dtype: Any = jnp.float32
+    kernel_init: Callable[[PRNGKey, Shape, Dtype], Array] = default_kernel_init
+    bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = nn.initializers.zeros
+    use_bias: bool = True
+    precision: nn.linear.PrecisionLike = None
+    numerical_stabilizer: float = 0.001
 
     """
     ## For some reason putting the initializers over here doesn't seem to work.
@@ -30,24 +40,28 @@ class MHA(nn.Module):
     key_kernel_init = jax.nn.initializers.glorot_normal
     value_kernel_init = jax.nn.initializers.glorot_normal
     """
-    def setup(self):
-        ## Preambulatory work of setting up the initializers and weights.
-        init_shape = (self.hidden_dim, self.num_heads, self.head_dim)
-        self.query_kernel = self.param('query_kernel', jax.nn.initializers.glorot_uniform(), init_shape, jnp.float32)
-        self.key_kernel = self.param('key_kernel', jax.nn.initializers.glorot_uniform(), (self.hidden_dim, self.num_heads, self.head_dim))
-        self.value_kernel = self.param('value_kernel', jax.nn.initializers.glorot_uniform(), (self.hidden_dim, self.num_heads, self.head_dim))
 
-        self.numerical_stabilizer = 0.001
-
-    def __call__(self, x, *, train): 
+    @nn.compact
+    def __call__(self, x, *, train):
         ## Jax complains about passing in multiple arguments.
         ## So we do the hack of concatenating the queries, keys and values into a list and unpacking it.
         query, key, value = x
 
         ## First, we map the queries keys and values.
-        queries = jnp.einsum('bsd, dnh -> bsnh', query, self.query_kernel)
-        keys = jnp.einsum('bsd, dnh -> bsnh', key, self.key_kernel)
-        values = jnp.einsum('bsd, dnh -> bsnh', value, self.value_kernel)
+        dense = functools.partial(DenseGeneral,
+                                  axis=-1,
+                                  dtype=self.dtype,
+                                  param_dtype=self.param_dtype,
+                                  features=(self.num_heads, self.head_dim),
+                                  kernel_init=self.kernel_init,
+                                  bias_init=self.bias_init,
+                                  use_bias=self.use_bias,
+                                  precision=self.precision)
+        # project inputs_q to multi-headed q/k/v
+        # dimensions are then [batch..., length, n_heads, n_features_per_head]
+        queries, keys, values = (dense(name='query')(query),
+                             dense(name='key')(key),
+                             dense(name='value')(value))
 
         ## The following is taken directly from the Performer Code. ##
         ## source: https://github.com/google-research/google-research/blob/master/performer/fast_attention/tensorflow/fast_attention.py#L322 ##
@@ -77,7 +91,16 @@ class MHA(nn.Module):
             a_v = a_v / normalizer
 
         ## Finally, concatenate across the head dimension.
-        return a_v.reshape((a_v.shape[0], a_v.shape[1], a_v.shape[2]*a_v.shape[3]))
+        out = DenseGeneral(features=self.hidden_dim,
+                           axis=(-2, -1),
+                           kernel_init=self.kernel_init,
+                           bias_init=self.bias_init,
+                           use_bias=self.use_bias,
+                           dtype=self.dtype,
+                           param_dtype=self.param_dtype,
+                           precision=self.precision,
+                           name='out')(a_v)
+        return out
 
 """
 ## A place to unit test my Multi-Head-Attention Implementation.
