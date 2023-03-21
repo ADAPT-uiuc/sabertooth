@@ -19,13 +19,11 @@ from typing import Any, Callable, Optional
 import jax
 import jax.numpy as jnp
 from flax import linen as nn
-from jax_attention.jax_lin_mha import MHA as LinMHA
-from jax_attention.jax_performer_mha import MHA as PerfMHA
-from jax_attention.jax_sonic_mha import MHA as LinPerfMHA
-from jax_attention.jax_rfa_mha import MHA as RFAMHA
-from jax_attention.jax_sonic_lin_rfa_mha import MHA as LinRFAMHA
-from jax_attention.jax_linear_mha import MHA as LTMHA
-from jax_attention.jax_sonic_lin_linear_mha import MHA as LinLTMHA
+from efficient_attention.Linformer.lin_mha import MHA as LinMHA
+from efficient_attention.Performer.performer_mha import MHA as PerfMHA
+from efficient_attention.SONIC.sonic_lin_perf_mha import MHA as LinPerfMHA
+from efficient_attention.SONIC.sonic_lin_rfa_mha import MHA as LinRFAMHA
+from efficient_attention.RFA.rfa_mha import MHA as RFAMHA
 
 def gelu(x):
     return jax.nn.gelu(x, approximate=False)
@@ -125,12 +123,6 @@ class FastSelfAttention(nn.Module):
         elif self.attention_type == "RFAMHA":
             self.mha = RFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
                                  dropout=self.dropout, mask=False)
-        elif self.attention_type == "LTMHA":
-            self.mha = LTMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                              dropout=self.dropout, mask=False)
-        elif self.attention_type == "LinLTMHA":
-            self.mha = LinLTMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                             dropout=self.dropout, mask=False)
         else:
             raise Exception("Incorrect input of attention_type!")
 

@@ -109,7 +109,7 @@ class BertModel(nn.Module):
                 num_heads=self.config.num_attention_heads,
                 dropout=self.config.attention_probs_dropout_prob,
                 downsampling_k=self.config.downsampling_k,
-                attention_type=self.config.attention_type
+                attention_type=self.config.attention_type,
             )
 
         self.encoder_layers = [
@@ -376,7 +376,6 @@ class BertForPreTraining(nn.Module):
         params = flax.core.freeze(params)
         return params
 
-
 """
 from jax import random
 
@@ -394,7 +393,7 @@ batch_size = 2
 import configs.pretraining as cf
 config = cf.get_config()
 modelconfig = config.model
-modelconfig.attention_type = "VanillaMHA"
+modelconfig.attention_type = "LinPerfMHA"
 modelconfig.hidden_size = 8
 modelconfig.num_attention_heads = 2
 model = BertForPreTraining(modelconfig)
@@ -413,5 +412,3 @@ params = model.init(
 attn = model.apply({'params': params}, input_ids=x, input_mask=mask, type_ids=y, rngs={'dropout': dropout_key})
 print(attn)
 """
-
-
