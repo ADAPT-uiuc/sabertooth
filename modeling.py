@@ -35,6 +35,16 @@ ACT2FN = {
     "gelu_new": nn.gelu,
 }
 
+from absl import app, flags
+from ml_collections.config_flags import config_flags
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string(
+    "output_dir",
+    None,
+    "The output directory where the model checkpoints will be written.",
+)
+config_flags.DEFINE_config_file("config", None, "Hyperparameter configuration")
 
 def get_hidden_activation(config: ConfigDict):
     return ACT2FN[config.hidden_act]
@@ -80,15 +90,28 @@ class BertModel(nn.Module):
             intermediate_activation=get_hidden_activation(self.config),
             kernel_init=get_kernel_init(self.config),
         )
-        build_self_attention = functools.partial(
-            layers.SelfAttention,
-            num_heads=self.config.num_attention_heads,
-            qkv_features=self.config.hidden_size,
-            dropout_rate=self.config.attention_probs_dropout_prob,
-            broadcast_dropout=False,
-            kernel_init=get_kernel_init(self.config),
-            bias_init=nn.initializers.zeros,
-        )
+
+        if self.config.attention_type == "VanillaMHA":
+            build_self_attention = functools.partial(
+                layers.SelfAttention,
+                num_heads=self.config.num_attention_heads,
+                qkv_features=self.config.hidden_size,
+                dropout_rate=self.config.attention_probs_dropout_prob,
+                broadcast_dropout=False,
+                kernel_init=get_kernel_init(self.config),
+                bias_init=nn.initializers.zeros,
+            )
+        else:
+            build_self_attention = functools.partial(
+                layers.FastSelfAttention,
+                hidden_dim=self.config.hidden_size,
+                head_dim=int(self.config.hidden_size / self.config.num_attention_heads),
+                num_heads=self.config.num_attention_heads,
+                dropout=self.config.attention_probs_dropout_prob,
+                downsampling_k=self.config.downsampling_k,
+                attention_type=self.config.attention_type,
+            )
+
         self.encoder_layers = [
             layers.TransformerBlock(
                 build_feed_forward=build_feed_forward,
@@ -352,3 +375,40 @@ class BertForPreTraining(nn.Module):
         # because FrozenDict and python dict input structures are not identical.
         params = flax.core.freeze(params)
         return params
+
+"""
+from jax import random
+
+hidden_dim = 8
+head_dim = 4
+num_heads = 2
+dropout = 0.1
+sequence_length = 128
+ffn_size = 10
+num_layers = 2
+vocabulary_size = 10
+downsampling_k = 3
+batch_size = 2
+
+import configs.pretraining as cf
+config = cf.get_config()
+modelconfig = config.model
+modelconfig.attention_type = "LinPerfMHA"
+modelconfig.hidden_size = 8
+modelconfig.num_attention_heads = 2
+model = BertForPreTraining(modelconfig)
+x = jnp.round(random.uniform(random.PRNGKey(44), (batch_size, sequence_length))).astype(jnp.int32)
+mask = jnp.ones((batch_size, sequence_length), dtype=jnp.int32)
+y = jnp.round(random.uniform(random.PRNGKey(44), (batch_size, sequence_length))).astype(jnp.int32)
+param_key = random.PRNGKey(42)
+dropout_key = random.PRNGKey(43)
+params = model.init(
+    {'params': param_key, 'dropout': dropout_key},
+                input_ids=x,
+                input_mask=mask,
+                type_ids=y,
+                deterministic=False,
+            )["params"]
+attn = model.apply({'params': params}, input_ids=x, input_mask=mask, type_ids=y, rngs={'dropout': dropout_key})
+print(attn)
+"""

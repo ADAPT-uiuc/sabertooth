@@ -19,7 +19,11 @@ from typing import Any, Callable, Optional
 import jax
 import jax.numpy as jnp
 from flax import linen as nn
-
+from efficient_attention.Linformer.lin_mha import MHA as LinMHA
+from efficient_attention.Performer.performer_mha import MHA as PerfMHA
+from efficient_attention.SONIC.sonic_lin_perf_mha import MHA as LinPerfMHA
+from efficient_attention.SONIC.sonic_lin_rfa_mha import MHA as LinRFAMHA
+from efficient_attention.RFA.rfa_mha import MHA as RFAMHA
 
 def gelu(x):
     return jax.nn.gelu(x, approximate=False)
@@ -92,6 +96,46 @@ class SelfAttention(nn.SelfAttention):
         if mask is not None:
             mask = jnp.expand_dims(mask, axis=(-3, -2))
         return super().__call__(hidden_states, mask, deterministic=deterministic)
+
+class FastSelfAttention(nn.Module):
+    hidden_dim: int
+    head_dim: int
+    num_heads: int
+    dropout: float
+    attention_type: str = "Vanilla"
+    downsampling_k: int = 64
+
+    def setup(self):
+        ## We first have the pre-ambulatory initialization.
+        # pdb.set_trace()
+        if self.attention_type == "PerfMHA":
+            self.mha = PerfMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                dropout=self.dropout, mask=False)
+        elif self.attention_type == "LinMHA":
+            self.mha = LinMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+        elif self.attention_type == "LinPerfMHA":
+            self.mha = LinPerfMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+        elif self.attention_type == "LinRFAMHA":
+            self.mha = LinRFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+        elif self.attention_type == "RFAMHA":
+            self.mha = RFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                 dropout=self.dropout, mask=False)
+        else:
+            raise Exception("Incorrect input of attention_type!")
+
+
+    @nn.compact
+    def __call__(self, hidden_states, mask=None, *, deterministic=False):
+        # Attention mask input has mask.shape == (batch_size, kv_length)
+        # Flax instead expects mask.shape == (batch_size, 1, 1, kv_length)
+        if mask is not None:
+            mask = jnp.expand_dims(mask, axis=(-3, -2))
+        queries, keys, values = hidden_states, hidden_states, hidden_states
+        attn = self.mha([queries, keys, values], train=not deterministic)
+        return attn
 
 
 class TransformerBlock(nn.Module):
