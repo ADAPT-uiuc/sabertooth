@@ -61,6 +61,10 @@ def get_config(config_string=""):
             # Sequences longer than this will be truncated, and sequences shorter
             # than this will be padded.
             "max_seq_length": 128,
+            # The attention variant
+            "attention_type": "PerfMHA",
+            # The downsampling factor for low-rank methods.
+            "downsampling_k" : 64,
             # Model configuration parameters, to be loaded from the pre-trained
             # inital checkpoint.
             "model": config_dict.placeholder(ml_collections.ConfigDict),

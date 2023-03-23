@@ -61,6 +61,8 @@ def get_config():
             "type_vocab_size": hf_config.type_vocab_size,
             "initializer_range": hf_config.initializer_range,
             "layer_norm_eps": hf_config.layer_norm_eps,
+            "attention_type": config.attention_type,
+            "downsampling_k": config.downsampling_k,
         }
     )
     config.model = model_config
