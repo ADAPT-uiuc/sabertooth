@@ -39,13 +39,6 @@ from absl import app, flags
 from ml_collections.config_flags import config_flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string(
-    "output_dir",
-    None,
-    "The output directory where the model checkpoints will be written.",
-)
-config_flags.DEFINE_config_file("config", None, "Hyperparameter configuration")
-
 def get_hidden_activation(config: ConfigDict):
     return ACT2FN[config.hidden_act]
 
@@ -393,7 +386,7 @@ batch_size = 2
 import configs.pretraining as cf
 config = cf.get_config()
 modelconfig = config.model
-modelconfig.attention_type = "LinPerfMHA"
+modelconfig.attention_type = "PerfMHA"
 modelconfig.hidden_size = 8
 modelconfig.num_attention_heads = 2
 model = BertForPreTraining(modelconfig)
