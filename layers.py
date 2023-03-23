@@ -24,6 +24,8 @@ from efficient_attention.Performer.performer_mha import MHA as PerfMHA
 from efficient_attention.SONIC.sonic_lin_perf_mha import MHA as LinPerfMHA
 from efficient_attention.SONIC.sonic_lin_rfa_mha import MHA as LinRFAMHA
 from efficient_attention.RFA.rfa_mha import MHA as RFAMHA
+from efficient_attention.Transformers_are_RNNs.RNNs_mha import MHA as RNNsMHA
+from efficient_attention.SONIC.sonic_lin_RNNs_mha import MHA as LinRNNsMHA
 
 def gelu(x):
     return jax.nn.gelu(x, approximate=False)
@@ -102,7 +104,7 @@ class FastSelfAttention(nn.Module):
     head_dim: int
     num_heads: int
     dropout: float
-    attention_type: str = "Vanilla"
+    attention_type: str
     downsampling_k: int = 64
 
     def setup(self):
@@ -123,6 +125,12 @@ class FastSelfAttention(nn.Module):
         elif self.attention_type == "RFAMHA":
             self.mha = RFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
                                  dropout=self.dropout, mask=False)
+        elif self.attention_type == "RNNsMHA":
+            self.mha = RNNsMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                              dropout=self.dropout, mask=False)
+        elif self.attention_type == "LinRNNsMHA":
+            self.mha = LinRNNsMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                 dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
         else:
             raise Exception("Incorrect input of attention_type!")
 
