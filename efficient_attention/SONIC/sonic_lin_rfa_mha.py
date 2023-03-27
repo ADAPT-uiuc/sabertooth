@@ -64,7 +64,7 @@ class MHA(nn.Module):
         self.value_downsampling_mat_512 = self.param('value_downsample_mat_512', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_512, mean, sd)
 
         ## Load random matrices.
-        self.random_matrices = load_random_matrices(head_dim=self.head_dim, proj_dim=self.hidden_dim)
+        self.random_matrices = load_random_matrices(head_dim=self.head_dim, proj_dim=self.head_dim)
         if self.reparam_proj:
             self.sigma = self.param('sigma', jax.nn.initializers.constant(1.), (self.num_heads, 1, self.head_dim))
 

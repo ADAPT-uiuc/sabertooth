@@ -53,7 +53,6 @@ def load_random_matrices(
         *,
         head_dim: int,
         proj_dim: int):
-
     # [num_random_matrices, proj_dim, head_dim]
     if os.path.exists(f"{RANDOM_MATRICES_PATH}/{head_dim}_{proj_dim}.npy"):
         random_matrices = jnp.load(
@@ -94,7 +93,7 @@ class MHA(nn.Module):
         self.numerical_stabilizer = 0.001
 
         # self.random_matrices = utils.load_random_matrices()
-        self.random_matrices = load_random_matrices(head_dim=self.head_dim, proj_dim=self.hidden_dim)
+        self.random_matrices = load_random_matrices(head_dim=self.head_dim, proj_dim=self.head_dim)
         if self.reparam_proj:
             self.sigma = self.param('sigma', jax.nn.initializers.constant(1.), (self.num_heads, 1, self.head_dim))
 

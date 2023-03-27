@@ -66,7 +66,7 @@ def get_initial_params(model, init_checkpoint=None):
     else:
 
         def initialize_model():
-            dummy_input = jnp.zeros((1, 1), dtype=jnp.int32)
+            dummy_input = jnp.zeros((1, 128), dtype=jnp.int32)
             return model.init(
                 jax.random.PRNGKey(np.random.randint(2**16)),
                 input_ids=dummy_input,
