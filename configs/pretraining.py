@@ -16,6 +16,12 @@ import ml_collections
 
 
 def get_config(config_string="base"):
+    ## Type of attention mechanism.
+    attn_type = "RFAMHA"
+    ## Downsampling factor 
+    downsampling_k = 64
+    ## Dropout for ffn
+    ffn_dropout = 0.1
     if config_string == "large":
         model_config = ml_collections.ConfigDict(
             {
@@ -25,14 +31,14 @@ def get_config(config_string="base"):
                 "num_attention_heads": 16,
                 "hidden_act": "gelu_new",
                 "intermediate_size": 4096,
-                "hidden_dropout_prob": 0.1,
+                "hidden_dropout_prob": ffn_dropout,
                 "attention_probs_dropout_prob": 0.1,
                 "max_position_embeddings": 512,
                 "type_vocab_size": 2,
                 "initializer_range": 0.02,
                 "layer_norm_eps": 1e-12,
-                "attention_type": "PerfMHA",
-                "downsampling_k": 64
+                "attention_type": attn_type,
+                "downsampling_k": downsampling_k
             }
         )
     else:
@@ -45,14 +51,14 @@ def get_config(config_string="base"):
                 "num_attention_heads": 12,
                 "hidden_act": "gelu_new",
                 "intermediate_size": 3072,
-                "hidden_dropout_prob": 0.1,
+                "hidden_dropout_prob": ffn_dropout,
                 "attention_probs_dropout_prob": 0.1,
                 "max_position_embeddings": 512,
                 "type_vocab_size": 2,
                 "initializer_range": 0.02,
                 "layer_norm_eps": 1e-12,
-                "attention_type": "PerfMHA",
-                "downsampling_k": 64
+                "attention_type": attn_type,
+                "downsampling_k": downsampling_k
             }
         )
 
@@ -67,7 +73,7 @@ def get_config(config_string="base"):
             # Pre-trained tokenizer
             "tokenizer": "/srv/local/shared/pre-train-mixture/wikibooks_32k.model",
             # Whether to run training.
-            "do_train": True,
+            "do_train": True, 
             # Whether to run eval.
             "do_eval": True,
             # Total batch size for training.
@@ -75,8 +81,9 @@ def get_config(config_string="base"):
             # Total batch size for eval.
             "eval_batch_size": 64,
             # Optimizer: either 'adam' or 'lamb
-            "optimizer": "adam",
+            "optimizer": "lamb",
             # The base learning rate for Adam or LAMB.
+            #"learning_rate": 1e-4, ## This is the true learning rate that works for everything except for RFA.
             "learning_rate": 1e-4,
             # The beta1 parameter for Adam or LAMB
             "adam_beta1": 0.9,

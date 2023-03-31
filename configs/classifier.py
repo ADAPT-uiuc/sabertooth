@@ -31,7 +31,7 @@ def get_config(config_string=""):
             # Whether to run eval on the dev set.
             "do_eval": True,
             # Whether to run the model in inference mode on the test set.
-            "do_predict": True,
+            "do_predict": False,
             # Total batch size for training.
             "train_batch_size": 32,
             # Total batch size for eval.
@@ -62,7 +62,7 @@ def get_config(config_string=""):
             # than this will be padded.
             "max_seq_length": 128,
             # The attention variant
-            "attention_type": "PerfMHA",
+            "attention_type": "RFAMHA",
             # The downsampling factor for low-rank methods.
             "downsampling_k" : 64,
             # Model configuration parameters, to be loaded from the pre-trained
