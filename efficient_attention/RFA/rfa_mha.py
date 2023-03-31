@@ -7,9 +7,6 @@ sys.path.append(os.getcwd())
 
 import jax.numpy as jnp
 import jax
-import flax.linen as nn
-from jax.nn.initializers import glorot_normal
-from flax.linen import softmax
 
 import flax.linen as nn
 from flax.linen.linear import DenseGeneral, default_kernel_init
