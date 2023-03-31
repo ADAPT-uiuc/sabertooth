@@ -386,7 +386,7 @@ batch_size = 2
 import configs.pretraining as cf
 config = cf.get_config()
 modelconfig = config.model
-modelconfig.attention_type = "LinMHA"
+modelconfig.attention_type = "LinRNNsMHA"
 modelconfig.hidden_size = 8
 modelconfig.num_attention_heads = 2
 model = BertForPreTraining(modelconfig)
