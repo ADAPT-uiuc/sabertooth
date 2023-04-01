@@ -17,7 +17,7 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "RFAMHA"
+    attn_type = "RNNsMHA"
     ## Downsampling factor 
     downsampling_k = 64
     ## Dropout for ffn
@@ -81,10 +81,9 @@ def get_config(config_string="base"):
             # Total batch size for eval.
             "eval_batch_size": 64,
             # Optimizer: either 'adam' or 'lamb
-            "optimizer": "lamb",
+            "optimizer": "adam",
             # The base learning rate for Adam or LAMB.
-            #"learning_rate": 1e-4, ## This is the true learning rate that works for everything except for RFA.
-            "learning_rate": 1e-4,
+            "learning_rate": 1e-4, 
             # The beta1 parameter for Adam or LAMB
             "adam_beta1": 0.9,
             # The beta2 parameter for Adam or LAMB

@@ -62,7 +62,7 @@ def get_config(config_string=""):
             # than this will be padded.
             "max_seq_length": 128,
             # The attention variant
-            "attention_type": "RFAMHA",
+            "attention_type": "RNNsMHA",
             # The downsampling factor for low-rank methods.
             "downsampling_k" : 64,
             # Model configuration parameters, to be loaded from the pre-trained
