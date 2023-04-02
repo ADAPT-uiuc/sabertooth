@@ -126,6 +126,7 @@ class BertModel(nn.Module):
         input_ids: jnp.ndarray,
         input_mask: jnp.ndarray,
         type_ids: jnp.ndarray,
+        step: int,
         *,
         deterministic: bool = False,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -144,7 +145,7 @@ class BertModel(nn.Module):
         mask = input_mask.astype(jnp.int32)
         for transformer_block in self.encoder_layers:
             hidden_states = transformer_block(
-                hidden_states, mask, deterministic=deterministic
+                hidden_states, mask, step, deterministic=deterministic
             )
         pooled_output = self.pooler(hidden_states[:, 0])
         pooled_output = jnp.tanh(pooled_output)
@@ -277,6 +278,7 @@ class BertForPreTraining(nn.Module):
         masked_lm_labels: jnp.ndarray = None,
         masked_lm_weights: jnp.ndarray = None,
         next_sentence_labels: jnp.ndarray = None,
+        step: int = 0,
         *,
         deterministic: bool = False,
     ):
@@ -284,7 +286,7 @@ class BertForPreTraining(nn.Module):
         config = self.config
         bert = BertModel(config=config, name="bert")
         sequence_output, pooled_output = bert(
-            input_ids, input_mask, type_ids, deterministic=deterministic
+            input_ids, input_mask, type_ids, step, deterministic=deterministic
         )
         if masked_lm_positions is None:
             return sequence_output, pooled_output

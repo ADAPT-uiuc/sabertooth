@@ -136,13 +136,13 @@ class FastSelfAttention(nn.Module):
 
 
     @nn.compact
-    def __call__(self, hidden_states, mask=None, *, deterministic=False):
+    def __call__(self, hidden_states, step, mask=None, *, deterministic=False):
         # Attention mask input has mask.shape == (batch_size, kv_length)
         # Flax instead expects mask.shape == (batch_size, 1, 1, kv_length)
         if mask is not None:
             mask = jnp.expand_dims(mask, axis=(-3, -2))
         queries, keys, values = hidden_states, hidden_states, hidden_states
-        attn = self.mha([queries, keys, values], train=not deterministic)
+        attn = self.mha([queries, keys, values], step, train=not deterministic)
         return attn
 
 
@@ -162,9 +162,9 @@ class TransformerBlock(nn.Module):
         self.output_dropout = nn.Dropout(rate=self.dropout_rate)
         self.output_layer_norm = nn.LayerNorm(epsilon=self.layer_norm_epsilon)
 
-    def __call__(self, hidden_states, mask, *, deterministic=False):
+    def __call__(self, hidden_states, mask, step, *, deterministic=False):
         attention_output = self.self_attention(
-            hidden_states, mask, deterministic=deterministic
+            hidden_states, mask, step, deterministic=deterministic
         )
         attention_output = self.self_attention_dropout(
             attention_output, deterministic=deterministic
