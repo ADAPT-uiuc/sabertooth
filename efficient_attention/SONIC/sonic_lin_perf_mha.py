@@ -33,6 +33,7 @@ class MHA(nn.Module):
     bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = nn.initializers.zeros
     use_bias: bool = True
     precision: nn.linear.PrecisionLike = None
+    up_train: bool = False
 
     """
     ## For some reason putting the initializers over here doesn't seem to work.
@@ -83,11 +84,12 @@ class MHA(nn.Module):
 
         assert all(len(i.shape) == 3 for i in x), "Incorrect size of input, should be [batch, seq length, hidden dimension]"
         if key.shape[1] == value.shape[1] == 128:
-            key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_128, key)
-            value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_128, value)
+            ## We conditionally execute this based on a 70-30 split.
+            key = jax.lax.cond((step < (0.7 * 120000)) and self.up_train, lambda x, y : y, lambda x, y: jnp.einsum('ks, bsd -> bkd', x, y), (self.key_downsampling_mat_128, key))
+            value = jax.lax.cond((step < (0.7 * 120000)) and self.up_train, lambda x, y : y, lambda x, y: jnp.einsum('ks, bsd -> bkd', x, y), (self.value_downsampling_mat_128, value))
         elif query.shape[1] == value.shape[1] == 512:
-            key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_512, key)
-            value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_512, value)
+            key = jax.lax.cond((step < (0.7 * 120000)) and self.up_train, lambda x, y : y, lambda x, y: jnp.einsum('ks, bsd -> bkd', x, y), (self.key_downsampling_mat_512, key))
+            value = jax.lax.cond((step < (0.7 * 120000)) and self.up_train, lambda x, y : y, lambda x, y: jnp.einsum('ks, bsd -> bkd', x, y), (self.value_downsampling_mat_512, value))
         else:
             raise Exception("Input sequence length must be of size 128 or 512.")
 

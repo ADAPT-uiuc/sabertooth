@@ -31,6 +31,7 @@ class MHA(nn.Module):
     use_bias: bool = True
     precision: nn.linear.PrecisionLike = None
     numerical_stabilizer: float = 0.001
+    up_train: bool = False
 
     """
     ## For some reason putting the initializers over here doesn't seem to work.

@@ -106,31 +106,32 @@ class FastSelfAttention(nn.Module):
     dropout: float
     attention_type: str
     downsampling_k: int = 64
+    up_train: bool = False
 
     def setup(self):
         ## We first have the pre-ambulatory initialization.
         # pdb.set_trace()
         if self.attention_type == "PerfMHA":
             self.mha = PerfMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False)
+                                dropout=self.dropout, mask=False, up_train=self.up_train)
         elif self.attention_type == "LinMHA":
             self.mha = LinMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         elif self.attention_type == "LinPerfMHA":
             self.mha = LinPerfMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         elif self.attention_type == "LinRFAMHA":
             self.mha = LinRFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         elif self.attention_type == "RFAMHA":
             self.mha = RFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                 dropout=self.dropout, mask=False)
+                                 dropout=self.dropout, mask=False, up_train=self.up_train)
         elif self.attention_type == "RNNsMHA":
             self.mha = RNNsMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                              dropout=self.dropout, mask=False)
+                              dropout=self.dropout, mask=False, up_train=self.up_train)
         elif self.attention_type == "LinRNNsMHA":
             self.mha = LinRNNsMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                 dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+                                 dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         else:
             raise Exception("Incorrect input of attention_type!")
 

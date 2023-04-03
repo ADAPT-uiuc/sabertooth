@@ -40,6 +40,7 @@ class MHA(nn.Module):
     bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = nn.initializers.zeros
     use_bias: bool = True
     precision: nn.linear.PrecisionLike = None
+    up_train: bool = False
 
     """
     ## For some reason putting the initializers over here doesn't seem to work.

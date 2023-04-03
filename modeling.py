@@ -103,6 +103,7 @@ class BertModel(nn.Module):
                 dropout=self.config.attention_probs_dropout_prob,
                 downsampling_k=self.config.downsampling_k,
                 attention_type=self.config.attention_type,
+                up_train=self.config.up_train,
             )
 
         self.encoder_layers = [
