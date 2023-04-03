@@ -208,7 +208,7 @@ def main(argv):
         )
 
         for step, batch in zip(range(0, num_train_steps), train_iter):
-            state = train_step_fn(state, batch)
+            state = train_step_fn(state, batch, True)
 
     if config.do_eval:
         eval_fn = training.create_eval_fn(compute_stats)
