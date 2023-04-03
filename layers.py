@@ -163,9 +163,9 @@ class TransformerBlock(nn.Module):
         self.output_dropout = nn.Dropout(rate=self.dropout_rate)
         self.output_layer_norm = nn.LayerNorm(epsilon=self.layer_norm_epsilon)
 
-    def __call__(self, hidden_states, mask, step, *, deterministic=False):
+    def __call__(self, hidden_states, mask, switch, *, deterministic=False):
         attention_output = self.self_attention(
-            hidden_states, step, mask, deterministic=deterministic
+            hidden_states, switch, mask, deterministic=deterministic
         )
         attention_output = self.self_attention_dropout(
             attention_output, deterministic=deterministic
