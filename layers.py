@@ -137,13 +137,13 @@ class FastSelfAttention(nn.Module):
 
 
     @nn.compact
-    def __call__(self, hidden_states, step, mask=None, *, deterministic=False):
+    def __call__(self, hidden_states, switch, mask=None, *, deterministic=False):
         # Attention mask input has mask.shape == (batch_size, kv_length)
         # Flax instead expects mask.shape == (batch_size, 1, 1, kv_length)
         if mask is not None:
             mask = jnp.expand_dims(mask, axis=(-3, -2))
         queries, keys, values = hidden_states, hidden_states, hidden_states
-        attn = self.mha([queries, keys, values], step, train=not deterministic)
+        attn = self.mha([queries, keys, values], switch, train=not deterministic)
         return attn
 
 
