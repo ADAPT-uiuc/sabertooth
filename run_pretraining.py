@@ -73,6 +73,7 @@ def get_initial_params(model, init_checkpoint=None):
                 input_mask=dummy_input,
                 type_ids=dummy_input,
                 masked_lm_positions=dummy_input,
+                step=0,
                 deterministic=True,
             )
 
@@ -193,7 +194,6 @@ def main(argv):
             batch_size=train_batch_size, training=True
         )
         train_step_fn = training.create_train_step(compute_pretraining_loss_and_metrics)
-
         for step, batch in zip(range(start_step, config.num_train_steps), train_iter):
             state = train_step_fn(state, batch, step)
             if jax.process_index() == 0 and (
