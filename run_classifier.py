@@ -106,7 +106,7 @@ def get_initial_params(model, init_checkpoint=None):
         return variable_dict["params"]
 
 
-def compute_loss_and_metrics(apply_fn, variables, batch, rngs):
+def compute_loss_and_metrics(apply_fn, variables, batch, switch, rngs):
     """Compute cross-entropy loss for classification tasks."""
     metrics = apply_fn(
         variables,
@@ -114,6 +114,7 @@ def compute_loss_and_metrics(apply_fn, variables, batch, rngs):
         batch["input_mask"],
         batch["token_type_ids"],
         batch["label"],
+        switch=switch,
         rngs=rngs,
     )
     return metrics["loss"], metrics
