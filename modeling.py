@@ -199,13 +199,14 @@ class BertForSequenceClassification(nn.Module):
         input_mask: jnp.ndarray,
         type_ids: jnp.ndarray,
         labels: jnp.ndarray = None,
+        switch: bool = True,
         *,
         deterministic: bool = False,
     ):
         """Applies BERT for sequence classification."""
         bert = BertModel(config=self.config, name="bert")
         _, pooled_output = bert(
-            input_ids, input_mask, type_ids, deterministic=deterministic
+            input_ids, input_mask, type_ids, switch, deterministic=deterministic
         )
         pooled_output = nn.Dropout(
             rate=self.config.hidden_dropout_prob, deterministic=deterministic
