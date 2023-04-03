@@ -17,7 +17,7 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "RNNsMHA"
+    attn_type = "LinPerfMHA"
     ## Downsampling factor 
     downsampling_k = 64
     ## Dropout for ffn

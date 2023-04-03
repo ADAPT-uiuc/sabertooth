@@ -100,7 +100,7 @@ class MHA(nn.Module):
         return random_matrices
 
 
-    def __call__(self, x, step, *, train):
+    def __call__(self, x, switch, *, train):
         ## Jax complains about passing in multiple arguments.
         ## So we do the hack of concatenating the queries, keys and values into a list and unpacking it.
         query, key, value = x

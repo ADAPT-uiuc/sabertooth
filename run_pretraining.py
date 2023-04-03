@@ -33,6 +33,8 @@ import data
 import modeling
 import training
 
+import pdb
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string(
@@ -73,7 +75,7 @@ def get_initial_params(model, init_checkpoint=None):
                 input_mask=dummy_input,
                 type_ids=dummy_input,
                 masked_lm_positions=dummy_input,
-                step=0,
+                switch=False,
                 deterministic=True,
             )
 
@@ -195,7 +197,7 @@ def main(argv):
         )
         train_step_fn = training.create_train_step(compute_pretraining_loss_and_metrics)
         for step, batch in zip(range(start_step, config.num_train_steps), train_iter):
-            state = train_step_fn(state, batch, step)
+            state = train_step_fn(state, batch, False if step < (0.7 * 120000) else True)
             if jax.process_index() == 0 and (
                 step % config.save_checkpoints_steps == 0
                 or step == config.num_train_steps - 1

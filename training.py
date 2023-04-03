@@ -138,10 +138,8 @@ def create_optimizer(
     tx = optax.chain(*tx_chain)
     return tx
 
-import pdb
 def create_train_step(loss_and_metrics_fn):
-    def train_step(state, step, batch):
-        pdb.set_trace()
+    def train_step(state, switch, batch):
         train_rngs, rng_treedef = jax.tree_flatten(state.train_rngs)
         split_rngs = [jax.random.split(rng) for rng in train_rngs]
         step_rngs = jax.tree_unflatten(rng_treedef, [x[0] for x in split_rngs])
@@ -149,7 +147,7 @@ def create_train_step(loss_and_metrics_fn):
 
         grad_fn = jax.value_and_grad(
             lambda params: loss_and_metrics_fn(
-                state.apply_fn, {"params": params}, batch, step, step_rngs
+                state.apply_fn, {"params": params}, batch, switch, step_rngs
             ),
             has_aux=True,
         )
@@ -158,10 +156,10 @@ def create_train_step(loss_and_metrics_fn):
         new_state = state.apply_gradients(grads=grads, train_rngs=new_train_rngs)
         return new_state, metrics
 
-    p_train_step = jax.pmap(train_step, axis_name="batch", in_axes=(0, None, 0), donate_argnums=(0,))
+    p_train_step = jax.pmap(train_step, axis_name="batch", in_axes=(0, None, 0), donate_argnums=(0,), static_broadcasted_argnums=(1))
 
-    def distributed_train_step(state, batch, step):
-        new_state, metrics = p_train_step(state, step, common_utils.shard(batch))
+    def distributed_train_step(state, batch, switch):
+        new_state, metrics = p_train_step(state, switch, common_utils.shard(batch))
         new_state.history.write(new_state.step, metrics)
         return new_state
 
