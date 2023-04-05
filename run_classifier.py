@@ -63,6 +63,7 @@ def get_config():
             "layer_norm_eps": hf_config.layer_norm_eps,
             "attention_type": config.attention_type,
             "downsampling_k": config.downsampling_k,
+            "up_train" : config.up_train,
         }
     )
     config.model = model_config
@@ -92,13 +93,14 @@ def get_initial_params(model, init_checkpoint=None):
     else:
 
         def initialize_model():
-            dummy_input = jnp.zeros((1, 1), dtype=jnp.int32)
+            dummy_input = jnp.zeros((1, 128), dtype=jnp.int32)
             return model.init(
                 jax.random.PRNGKey(np.random.randint(2**16)),
                 input_ids=dummy_input,
                 input_mask=dummy_input,
                 type_ids=dummy_input,
                 labels=jnp.zeros(1, dtype=jnp.int32),
+                switch=True,
                 deterministic=True,
             )
 
