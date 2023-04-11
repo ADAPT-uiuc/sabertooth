@@ -103,6 +103,7 @@ class BertModel(nn.Module):
                 dropout=self.config.attention_probs_dropout_prob,
                 downsampling_k=self.config.downsampling_k,
                 attention_type=self.config.attention_type,
+                up_train=self.config.up_train,
             )
 
         self.encoder_layers = [
@@ -126,6 +127,7 @@ class BertModel(nn.Module):
         input_ids: jnp.ndarray,
         input_mask: jnp.ndarray,
         type_ids: jnp.ndarray,
+        switch: bool = True,
         *,
         deterministic: bool = False,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
@@ -144,7 +146,7 @@ class BertModel(nn.Module):
         mask = input_mask.astype(jnp.int32)
         for transformer_block in self.encoder_layers:
             hidden_states = transformer_block(
-                hidden_states, mask, deterministic=deterministic
+                hidden_states, mask, switch, deterministic=deterministic
             )
         pooled_output = self.pooler(hidden_states[:, 0])
         pooled_output = jnp.tanh(pooled_output)
@@ -197,13 +199,14 @@ class BertForSequenceClassification(nn.Module):
         input_mask: jnp.ndarray,
         type_ids: jnp.ndarray,
         labels: jnp.ndarray = None,
+        switch: bool = True,
         *,
         deterministic: bool = False,
     ):
         """Applies BERT for sequence classification."""
         bert = BertModel(config=self.config, name="bert")
         _, pooled_output = bert(
-            input_ids, input_mask, type_ids, deterministic=deterministic
+            input_ids, input_mask, type_ids, switch, deterministic=deterministic
         )
         pooled_output = nn.Dropout(
             rate=self.config.hidden_dropout_prob, deterministic=deterministic
@@ -277,6 +280,7 @@ class BertForPreTraining(nn.Module):
         masked_lm_labels: jnp.ndarray = None,
         masked_lm_weights: jnp.ndarray = None,
         next_sentence_labels: jnp.ndarray = None,
+        switch: bool = True,
         *,
         deterministic: bool = False,
     ):
@@ -284,7 +288,7 @@ class BertForPreTraining(nn.Module):
         config = self.config
         bert = BertModel(config=config, name="bert")
         sequence_output, pooled_output = bert(
-            input_ids, input_mask, type_ids, deterministic=deterministic
+            input_ids, input_mask, type_ids, switch, deterministic=deterministic
         )
         if masked_lm_positions is None:
             return sequence_output, pooled_output

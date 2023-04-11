@@ -31,6 +31,7 @@ class MHA(nn.Module):
     use_bias: bool = True
     precision: nn.linear.PrecisionLike = None
     numerical_stabilizer: float = 0.001
+    up_train: bool = False
 
     """
     ## For some reason putting the initializers over here doesn't seem to work.
@@ -42,7 +43,7 @@ class MHA(nn.Module):
     """
 
     @nn.compact
-    def __call__(self, x, *, train):
+    def __call__(self, x, step, *, train):
         ## Jax complains about passing in multiple arguments.
         ## So we do the hack of concatenating the queries, keys and values into a list and unpacking it.
         query, key, value = x

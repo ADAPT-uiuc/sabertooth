@@ -106,43 +106,44 @@ class FastSelfAttention(nn.Module):
     dropout: float
     attention_type: str
     downsampling_k: int = 64
+    up_train: bool = False
 
     def setup(self):
         ## We first have the pre-ambulatory initialization.
         # pdb.set_trace()
         if self.attention_type == "PerfMHA":
             self.mha = PerfMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False)
+                                dropout=self.dropout, mask=False, up_train=self.up_train)
         elif self.attention_type == "LinMHA":
             self.mha = LinMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         elif self.attention_type == "LinPerfMHA":
             self.mha = LinPerfMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         elif self.attention_type == "LinRFAMHA":
             self.mha = LinRFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         elif self.attention_type == "RFAMHA":
             self.mha = RFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                 dropout=self.dropout, mask=False)
+                                 dropout=self.dropout, mask=False, up_train=self.up_train)
         elif self.attention_type == "RNNsMHA":
             self.mha = RNNsMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                              dropout=self.dropout, mask=False)
+                              dropout=self.dropout, mask=False, up_train=self.up_train)
         elif self.attention_type == "LinRNNsMHA":
             self.mha = LinRNNsMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                 dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k)
+                                 dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         else:
             raise Exception("Incorrect input of attention_type!")
 
 
     @nn.compact
-    def __call__(self, hidden_states, mask=None, *, deterministic=False):
+    def __call__(self, hidden_states, switch, mask=None, *, deterministic=False):
         # Attention mask input has mask.shape == (batch_size, kv_length)
         # Flax instead expects mask.shape == (batch_size, 1, 1, kv_length)
         if mask is not None:
             mask = jnp.expand_dims(mask, axis=(-3, -2))
         queries, keys, values = hidden_states, hidden_states, hidden_states
-        attn = self.mha([queries, keys, values], train=not deterministic)
+        attn = self.mha([queries, keys, values], switch, train=not deterministic)
         return attn
 
 
@@ -162,9 +163,9 @@ class TransformerBlock(nn.Module):
         self.output_dropout = nn.Dropout(rate=self.dropout_rate)
         self.output_layer_norm = nn.LayerNorm(epsilon=self.layer_norm_epsilon)
 
-    def __call__(self, hidden_states, mask, *, deterministic=False):
+    def __call__(self, hidden_states, mask, switch, *, deterministic=False):
         attention_output = self.self_attention(
-            hidden_states, mask, deterministic=deterministic
+            hidden_states, switch, mask, deterministic=deterministic
         )
         attention_output = self.self_attention_dropout(
             attention_output, deterministic=deterministic

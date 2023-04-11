@@ -63,6 +63,7 @@ def get_config():
             "layer_norm_eps": hf_config.layer_norm_eps,
             "attention_type": config.attention_type,
             "downsampling_k": config.downsampling_k,
+            "up_train" : config.up_train,
         }
     )
     config.model = model_config
@@ -92,13 +93,14 @@ def get_initial_params(model, init_checkpoint=None):
     else:
 
         def initialize_model():
-            dummy_input = jnp.zeros((1, 1), dtype=jnp.int32)
+            dummy_input = jnp.zeros((1, 128), dtype=jnp.int32)
             return model.init(
                 jax.random.PRNGKey(np.random.randint(2**16)),
                 input_ids=dummy_input,
                 input_mask=dummy_input,
                 type_ids=dummy_input,
                 labels=jnp.zeros(1, dtype=jnp.int32),
+                switch=True,
                 deterministic=True,
             )
 
@@ -106,7 +108,7 @@ def get_initial_params(model, init_checkpoint=None):
         return variable_dict["params"]
 
 
-def compute_loss_and_metrics(apply_fn, variables, batch, rngs):
+def compute_loss_and_metrics(apply_fn, variables, batch, switch, rngs):
     """Compute cross-entropy loss for classification tasks."""
     metrics = apply_fn(
         variables,
@@ -114,6 +116,7 @@ def compute_loss_and_metrics(apply_fn, variables, batch, rngs):
         batch["input_mask"],
         batch["token_type_ids"],
         batch["label"],
+        switch=switch,
         rngs=rngs,
     )
     return metrics["loss"], metrics
@@ -208,7 +211,7 @@ def main(argv):
         )
 
         for step, batch in zip(range(0, num_train_steps), train_iter):
-            state = train_step_fn(state, batch)
+            state = train_step_fn(state, batch, True)
 
     if config.do_eval:
         eval_fn = training.create_eval_fn(compute_stats)

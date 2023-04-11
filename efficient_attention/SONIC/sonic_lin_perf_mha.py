@@ -33,6 +33,7 @@ class MHA(nn.Module):
     bias_init: Callable[[PRNGKey, Shape, Dtype], Array] = nn.initializers.zeros
     use_bias: bool = True
     precision: nn.linear.PrecisionLike = None
+    up_train: bool = False
 
     """
     ## For some reason putting the initializers over here doesn't seem to work.
@@ -76,20 +77,18 @@ class MHA(nn.Module):
         ## Dropout layers.
         self.dropout_layer = nn.Dropout(0.1)
 
-    def __call__(self, x, *, train): 
+    def __call__(self, x, switch: bool, *, train): 
         ## Jax complains about passing in multiple arguments.
         ## So we do the hack of concatenating the queries, keys and values into a list and unpacking it.
         query, key, value = x
 
         assert all(len(i.shape) == 3 for i in x), "Incorrect size of input, should be [batch, seq length, hidden dimension]"
-        if key.shape[1] == value.shape[1] == 128:
+        if key.shape[1] == value.shape[1] == 128 and self.up_train and switch:
             key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_128, key)
             value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_128, value)
-        elif query.shape[1] == value.shape[1] == 512:
+        elif query.shape[1] == value.shape[1] == 512 and self.up_train and switch:
             key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_512, key)
             value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_512, value)
-        else:
-            raise Exception("Input sequence length must be of size 128 or 512.")
 
         # project inputs_q to multi-headed q/k/v
         # dimensions are then [batch..., length, n_heads, n_features_per_head]

@@ -17,11 +17,13 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "RNNsMHA"
+    attn_type = "LinPerfMHA"
     ## Downsampling factor 
     downsampling_k = 64
     ## Dropout for ffn
     ffn_dropout = 0.1
+    ## Up_train flag for a 70-30 split
+    up_train = True
     if config_string == "large":
         model_config = ml_collections.ConfigDict(
             {
@@ -38,7 +40,8 @@ def get_config(config_string="base"):
                 "initializer_range": 0.02,
                 "layer_norm_eps": 1e-12,
                 "attention_type": attn_type,
-                "downsampling_k": downsampling_k
+                "downsampling_k": downsampling_k,
+                "up_train": up_train 
             }
         )
     else:
@@ -58,7 +61,8 @@ def get_config(config_string="base"):
                 "initializer_range": 0.02,
                 "layer_norm_eps": 1e-12,
                 "attention_type": attn_type,
-                "downsampling_k": downsampling_k
+                "downsampling_k": downsampling_k,
+                "up_train": up_train
             }
         )
 

@@ -33,6 +33,8 @@ import data
 import modeling
 import training
 
+import pdb
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string(
@@ -73,6 +75,7 @@ def get_initial_params(model, init_checkpoint=None):
                 input_mask=dummy_input,
                 type_ids=dummy_input,
                 masked_lm_positions=dummy_input,
+                switch=False,
                 deterministic=True,
             )
 
@@ -80,7 +83,7 @@ def get_initial_params(model, init_checkpoint=None):
         return variable_dict["params"]
 
 
-def compute_pretraining_loss_and_metrics(apply_fn, variables, batch, rngs):
+def compute_pretraining_loss_and_metrics(apply_fn, variables, batch, step, rngs):
     """Compute cross-entropy loss for classification tasks."""
     metrics = apply_fn(
         variables,
@@ -91,6 +94,7 @@ def compute_pretraining_loss_and_metrics(apply_fn, variables, batch, rngs):
         batch["masked_lm_ids"],
         batch["masked_lm_weights"],
         batch["next_sentence_label"],
+        step,
         rngs=rngs,
     )
     return metrics["loss"], metrics
@@ -192,9 +196,8 @@ def main(argv):
             batch_size=train_batch_size, training=True
         )
         train_step_fn = training.create_train_step(compute_pretraining_loss_and_metrics)
-
         for step, batch in zip(range(start_step, config.num_train_steps), train_iter):
-            state = train_step_fn(state, batch)
+            state = train_step_fn(state, batch, False if step < (0.7 * 120000) else True)
             if jax.process_index() == 0 and (
                 step % config.save_checkpoints_steps == 0
                 or step == config.num_train_steps - 1

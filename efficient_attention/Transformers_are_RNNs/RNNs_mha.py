@@ -72,7 +72,7 @@ class MHA(nn.Module):
         self.dropout_layer = nn.Dropout(0.1)
 
 
-    def __call__(self, x, *, train):
+    def __call__(self, x, step, *, train):
         ## Jax complains about passing in multiple arguments.
         ## So we do the hack of concatenating the queries, keys and values into a list and unpacking it.
         query, key, value = x
