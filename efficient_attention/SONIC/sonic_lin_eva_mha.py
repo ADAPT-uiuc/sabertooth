@@ -7,7 +7,6 @@ import numpy as np
 import flax.linen as nn
 import jax.random
 from flax.linen.linear import DenseGeneral, default_kernel_init
-from efficient_attention.Linformer.lin_mha import MHA as LinMHA
 
 import functools
 from typing import (Any, Callable, Optional, Tuple)
