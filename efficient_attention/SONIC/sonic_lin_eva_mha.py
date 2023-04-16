@@ -2,10 +2,12 @@ import sys
 import os
 
 import jax.numpy as jnp
+import numpy as np
 
 import flax.linen as nn
 import jax.random
 from flax.linen.linear import DenseGeneral, default_kernel_init
+from efficient_attention.Linformer.lin_mha import MHA as LinMHA
 
 import functools
 from typing import (Any, Callable, Optional, Tuple)
@@ -170,12 +172,31 @@ class MHA(nn.Module):
         # pdb.set_trace()
 
         assert all(len(i.shape) == 3 for i in x), "Incorrect size of input, should be [batch, seq length, hidden dimension]"
-        if key.shape[1] == value.shape[1] == 128 and ((self.up_train and switch) or not self.up_train):
+        if key.shape[1] == value.shape[1] == 128:
             key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_128, key)
             value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_128, value)
-        elif query.shape[1] == value.shape[1] == 512 and ((self.up_train and switch) or not self.up_train):
+        elif query.shape[1] == value.shape[1] == 512:
             key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_512, key)
             value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_512, value)
+
+        if self.up_train and not switch:
+            # Uptrain with Linformer attention
+            queries, keys, values = (self.dense_queries(query),
+                                     self.dense_keys(key),
+                                     self.dense_values(value))
+
+            q_ks = jnp.einsum('bqnh, bknh -> bnqk', queries, keys)
+
+            q_ks /= jnp.sqrt(jnp.array(self.head_dim).astype(np.float32))
+
+            attn_mat = nn.softmax(q_ks)
+
+            attn_mat = self.dropout_layer(attn_mat, deterministic=not train)
+
+            a_v = jnp.einsum('bhqk, bkhd -> bqhd', attn_mat, values)
+
+            out = self.dense_out(a_v)
+            return out
 
         query, key_padding_mask, seq_shape = self._process_input(query, key_padding_mask)
         key, key_padding_mask, seq_shape = self._process_input(key, key_padding_mask)
@@ -190,7 +211,6 @@ class MHA(nn.Module):
         #                         key.reshape((batch_size, sequence_length, num_heads, head_dim)).transpose(0, 2, 1, 3),
         #                         value.reshape((batch_size, sequence_length, num_heads, head_dim)).transpose(0, 2, 1, 3))
 
-        # print("shape of multihead:", queries.shape)
 
         if key_padding_mask is None:
             key_padding_mask = jnp.zeros((batch_size, sequence_length), dtype=keys.dtype)
@@ -211,6 +231,7 @@ class MHA(nn.Module):
         rf_w_k = self.window_partition(keys, sequence_length, window_size=rf_win_size_kv, ext_window_size=self.ext_size)
         rf_w_v = self.window_partition(values, sequence_length, window_size=rf_win_size_kv, ext_window_size=self.ext_size)
 
+        # input mask is not used in Linformer attention
         '''
         rf_w_mask = self.window_partition(
             key_padding_mask,
@@ -247,12 +268,14 @@ class MHA(nn.Module):
         rfa_chunk = jnp.einsum('...wid,...cd->...wic', w_q, self.scale * rf_k_bar)
         num_rfa_chunks = rfa_chunk.shape[-1]
 
+        '''
         local_dots_mask = self.window_partition(
             key_padding_mask,
             sequence_length,
             ext_window_size=self.ext_size,
             pad_val=1
         ).astype(bool).transpose((0, 1, 2, -1, -2))
+        '''
 
         log_qk_local_dot = jnp.einsum('bhwie,bhwje->bhwij', w_q, w_k) * self.scale # [b, h, w, i, j]
 
@@ -265,14 +288,12 @@ class MHA(nn.Module):
 
         # log_qk_local_dot = log_qk_local_dot.masked_fill(local_dots_mask, mask_val)
         # log_qk_local_dot = jnp.where(local_dots_mask, mask_val, log_qk_local_dot)
+
         local_len = log_qk_local_dot.shape[-1]
 
         attn = nn.softmax(jnp.concatenate([log_qk_local_dot, rfa_chunk], axis=-1), axis=-1)
-        # print("shape of attn:", attn.shape, "\nlocal_len:", local_len, "\nnum_rfa_chunks:", num_rfa_chunks)
         local_attn, ra_attn = jnp.split(attn, [local_len], axis=-1)
-        # print("local_attn:", local_attn.shape)
-        # print("ra_attn:", ra_attn.shape)
-        # print("beta:", beta.shape)
+
         output_local = jnp.einsum('bhwij,bhwjd->bhwid', local_attn, w_v)
         output_snis = jnp.einsum('bhwic,bhcd->bhwid', ra_attn, beta)
 
@@ -283,7 +304,7 @@ class MHA(nn.Module):
         out = self.dense_out(x)
         return out
 
-'''
+"""
 from jax import random
 
 hidden_dim = 32
@@ -303,7 +324,8 @@ x = jnp.ones((batch_size, sequence_length, hidden_dim))
 param_key = random.PRNGKey(42)
 dropout_key = random.PRNGKey(43)
 params = mha.init({'params': param_key, 'dropout': dropout_key}, [x, x, x], switch=True, train=True)
+attention_mat = mha.apply(params, [x, x, x], switch=False, train=True, rngs={'dropout': dropout_key})
 attention_mat = mha.apply(params, [x, x, x], switch=True, train=True, rngs={'dropout': dropout_key})
 print(attention_mat)
-'''
+"""
 
