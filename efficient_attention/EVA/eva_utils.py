@@ -168,7 +168,7 @@ class T5RelativePositionBias(nn.Module):
             ret += (n < 0).astype(jnp.int64) * num_buckets
             n = jnp.abs(n)
         else:
-            n = jnp.max(n, np.zeros_like(n))
+            n = jnp.max(n, jnp.zeros_like(n))
             # used np instead of jnp
 
         max_exact = num_buckets // 2

@@ -170,10 +170,10 @@ class MHA(nn.Module):
         # pdb.set_trace()
 
         assert all(len(i.shape) == 3 for i in x), "Incorrect size of input, should be [batch, seq length, hidden dimension]"
-        if key.shape[1] == value.shape[1] == 128 and self.up_train and switch:
+        if key.shape[1] == value.shape[1] == 128 and ((self.up_train and switch) or not self.up_train):
             key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_128, key)
             value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_128, value)
-        elif query.shape[1] == value.shape[1] == 512 and self.up_train and switch:
+        elif query.shape[1] == value.shape[1] == 512 and ((self.up_train and switch) or not self.up_train):
             key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_512, key)
             value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_512, value)
 
