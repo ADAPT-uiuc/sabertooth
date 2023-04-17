@@ -62,11 +62,19 @@ def get_config(config_string=""):
             # than this will be padded.
             "max_seq_length": 128,
             # The attention variant
-            "attention_type": "LinRNNsMHA",
+            "attention_type": "EVAMHA",
             # The downsampling factor for low-rank methods.
             "downsampling_k" : 64,
             # Whether we up-train model for GLUE.
             "up_train": False,
+            # use t5 position encoding
+            "use_t5_rpe": True,
+            # Window size of EVA attention
+            "window_size": 16,
+            # number of landmarks(C) of EVA attention
+            "num_landmarks": 16,
+            # Whether allow overlap when creating local windows
+            "overlap_window": False,
             # Model configuration parameters, to be loaded from the pre-trained
             # inital checkpoint.
             "model": config_dict.placeholder(ml_collections.ConfigDict),

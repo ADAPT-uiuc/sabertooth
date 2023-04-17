@@ -17,7 +17,7 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "LinRNNsMHA"
+    attn_type = "EVAMHA"
     ## Downsampling factor 
     downsampling_k = 64
     ## Dropout for ffn
@@ -41,7 +41,11 @@ def get_config(config_string="base"):
                 "layer_norm_eps": 1e-12,
                 "attention_type": attn_type,
                 "downsampling_k": downsampling_k,
-                "up_train": up_train 
+                "up_train": up_train,
+                "use_t5_rpe": True,
+                "window_size": 16,
+                "num_landmarks": 16,
+                "overlap_window": False
             }
         )
     else:
@@ -62,7 +66,11 @@ def get_config(config_string="base"):
                 "layer_norm_eps": 1e-12,
                 "attention_type": attn_type,
                 "downsampling_k": downsampling_k,
-                "up_train": up_train
+                "up_train": up_train,
+                "use_t5_rpe": True,
+                "window_size": 16,
+                "num_landmarks": 16,
+                "overlap_window": False
             }
         )
 
