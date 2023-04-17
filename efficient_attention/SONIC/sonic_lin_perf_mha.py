@@ -81,7 +81,6 @@ class MHA(nn.Module):
         ## Jax complains about passing in multiple arguments.
         ## So we do the hack of concatenating the queries, keys and values into a list and unpacking it.
         query, key, value = x
-
         assert all(len(i.shape) == 3 for i in x), "Incorrect size of input, should be [batch, seq length, hidden dimension]"
         if key.shape[1] == value.shape[1] == 128 and self.up_train and switch:
             key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_128, key)

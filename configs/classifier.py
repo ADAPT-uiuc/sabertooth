@@ -62,11 +62,11 @@ def get_config(config_string=""):
             # than this will be padded.
             "max_seq_length": 128,
             # The attention variant
-            "attention_type": "LinPerfMHA",
+            "attention_type": "LinRNNsMHA",
             # The downsampling factor for low-rank methods.
             "downsampling_k" : 64,
             # Whether we up-train model for GLUE.
-            "up_train": True,
+            "up_train": False,
             # Model configuration parameters, to be loaded from the pre-trained
             # inital checkpoint.
             "model": config_dict.placeholder(ml_collections.ConfigDict),

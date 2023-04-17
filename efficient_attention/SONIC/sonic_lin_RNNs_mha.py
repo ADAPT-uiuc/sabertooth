@@ -101,8 +101,6 @@ class MHA(nn.Module):
         elif (value.shape[1] == key.shape[1] == 512) and ((not self.up_train) or (self.up_train and switch)):
             key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_512, key)
             value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_512, value)
-        else:
-            raise Exception("Input sequence length must be of size 128 or 512.")
 
         ## First, we map the queries keys and values.
         queries, keys, values = (self.dense_queries(query),
