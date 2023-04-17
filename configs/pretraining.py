@@ -95,7 +95,7 @@ def get_config(config_string="base"):
             # Optimizer: either 'adam' or 'lamb
             "optimizer": "adam",
             # The base learning rate for Adam or LAMB.
-            "learning_rate": 1e-4, 
+            "learning_rate": 1.7e-4, 
             # The beta1 parameter for Adam or LAMB
             "adam_beta1": 0.9,
             # The beta2 parameter for Adam or LAMB
