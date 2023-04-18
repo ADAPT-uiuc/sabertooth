@@ -104,6 +104,10 @@ class BertModel(nn.Module):
                 downsampling_k=self.config.downsampling_k,
                 attention_type=self.config.attention_type,
                 up_train=self.config.up_train,
+                num_landmarks=self.config.num_landmarks,
+                window_size=self.config.window_size,
+                use_t5_rpe=self.config.use_t5_rpe,
+                overlap_window=self.config.overlap_window
             )
 
         self.encoder_layers = [
@@ -373,7 +377,7 @@ class BertForPreTraining(nn.Module):
         params = flax.core.freeze(params)
         return params
 
-"""
+'''
 from jax import random
 
 hidden_dim = 8
@@ -390,9 +394,14 @@ batch_size = 2
 import configs.pretraining as cf
 config = cf.get_config()
 modelconfig = config.model
-modelconfig.attention_type = "LinRNNsMHA"
+modelconfig.attention_type = "LinEVAMHA"
 modelconfig.hidden_size = 8
 modelconfig.num_attention_heads = 2
+modelconfig.num_landmarks = 16
+modelconfig.window_size = 16
+modelconfig.use_t5_rpe = True
+modelconfig.overlap_window = True
+
 model = BertForPreTraining(modelconfig)
 x = jnp.round(random.uniform(random.PRNGKey(44), (batch_size, sequence_length))).astype(jnp.int32)
 mask = jnp.ones((batch_size, sequence_length), dtype=jnp.int32)
@@ -408,4 +417,4 @@ params = model.init(
             )["params"]
 attn = model.apply({'params': params}, input_ids=x, input_mask=mask, type_ids=y, rngs={'dropout': dropout_key})
 print(attn)
-"""
+'''

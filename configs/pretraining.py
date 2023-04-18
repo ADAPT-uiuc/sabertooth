@@ -17,7 +17,7 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "LinPerfMHA"
+    attn_type = "EVAMHA"
     ## Downsampling factor 
     downsampling_k = 64
     ## Dropout for ffn
@@ -41,7 +41,11 @@ def get_config(config_string="base"):
                 "layer_norm_eps": 1e-12,
                 "attention_type": attn_type,
                 "downsampling_k": downsampling_k,
-                "up_train": up_train 
+                "up_train": up_train,
+                "use_t5_rpe": True,
+                "window_size": 16,
+                "num_landmarks": 16,
+                "overlap_window": False
             }
         )
     else:
@@ -62,7 +66,11 @@ def get_config(config_string="base"):
                 "layer_norm_eps": 1e-12,
                 "attention_type": attn_type,
                 "downsampling_k": downsampling_k,
-                "up_train": up_train
+                "up_train": up_train,
+                "use_t5_rpe": True,
+                "window_size": 16,
+                "num_landmarks": 16,
+                "overlap_window": False
             }
         )
 
@@ -87,7 +95,7 @@ def get_config(config_string="base"):
             # Optimizer: either 'adam' or 'lamb
             "optimizer": "adam",
             # The base learning rate for Adam or LAMB.
-            "learning_rate": 1e-4, 
+            "learning_rate": 1.7e-4, 
             # The beta1 parameter for Adam or LAMB
             "adam_beta1": 0.9,
             # The beta2 parameter for Adam or LAMB

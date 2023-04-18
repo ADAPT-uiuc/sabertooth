@@ -26,6 +26,8 @@ from efficient_attention.SONIC.sonic_lin_rfa_mha import MHA as LinRFAMHA
 from efficient_attention.RFA.rfa_mha import MHA as RFAMHA
 from efficient_attention.Transformers_are_RNNs.RNNs_mha import MHA as RNNsMHA
 from efficient_attention.SONIC.sonic_lin_RNNs_mha import MHA as LinRNNsMHA
+from efficient_attention.EVA.eva_mha import MHA as EVAMHA
+from efficient_attention.SONIC.sonic_lin_eva_mha import MHA as LinEVAMHA
 
 def gelu(x):
     return jax.nn.gelu(x, approximate=False)
@@ -107,31 +109,43 @@ class FastSelfAttention(nn.Module):
     attention_type: str
     downsampling_k: int = 64
     up_train: bool = False
-
+    use_t5_rpe: bool = False
+    overlap_window: bool = False
+    window_size: int = 2
+    num_landmarks: int = 49
     def setup(self):
         ## We first have the pre-ambulatory initialization.
         # pdb.set_trace()
         if self.attention_type == "PerfMHA":
             self.mha = PerfMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, up_train=self.up_train)
+                               dropout=self.dropout, mask=False, up_train=self.up_train)
         elif self.attention_type == "LinMHA":
             self.mha = LinMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
+                              dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         elif self.attention_type == "LinPerfMHA":
             self.mha = LinPerfMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
+                                  dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         elif self.attention_type == "LinRFAMHA":
             self.mha = LinRFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
+                                 dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
         elif self.attention_type == "RFAMHA":
             self.mha = RFAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                 dropout=self.dropout, mask=False, up_train=self.up_train)
+                              dropout=self.dropout, mask=False, up_train=self.up_train)
         elif self.attention_type == "RNNsMHA":
             self.mha = RNNsMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                              dropout=self.dropout, mask=False, up_train=self.up_train)
+                               dropout=self.dropout, mask=False, up_train=self.up_train)
         elif self.attention_type == "LinRNNsMHA":
             self.mha = LinRNNsMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
-                                 dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
+                                  dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k, up_train=self.up_train)
+        elif self.attention_type == "EVAMHA":
+            self.mha = EVAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                              dropout=self.dropout, mask=False, up_train=self.up_train, use_t5_rpe=self.use_t5_rpe,
+                              window_size=self.window_size, num_landmarks=self.num_landmarks, overlap_window=self.overlap_window )
+        elif self.attention_type == "LinEVAMHA":
+            self.mha = LinEVAMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                 dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k,
+                                 up_train=self.up_train, use_t5_rpe=self.use_t5_rpe, window_size=self.window_size,
+                                 num_landmarks=self.num_landmarks, overlap_window=self.overlap_window)
         else:
             raise Exception("Incorrect input of attention_type!")
 
