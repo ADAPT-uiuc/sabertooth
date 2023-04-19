@@ -142,10 +142,10 @@ def main(argv):
 
     config = FLAGS.config
 
-    # input_files = sum([glob.glob(pattern) for pattern in config.input_files], [])
-    # assert input_files, "No input files!"
-    # print(f"Training with {len(input_files)} input files, including:")
-    # print(f" - {input_files[0]}")
+    input_files = sum([glob.glob(pattern) for pattern in config.input_files], [])
+    assert input_files, "No input files!"
+    print(f"Training with {len(input_files)} input files, including:")
+    print(f" - {input_files[0]}")
 
     model = modeling.BertForPreTraining(config=config.model)
     if config.model.attention_type == "LinEVAMHA":
