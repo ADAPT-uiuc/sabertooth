@@ -62,7 +62,7 @@ def get_output_dir(config):
     return output_dir
 
 
-def get_initial_params(model, init_checkpoint=None):
+def get_initial_params(model, switch, init_checkpoint=None):
     if init_checkpoint:
         return model.params_from_checkpoint(model, init_checkpoint)
     else:
@@ -75,7 +75,7 @@ def get_initial_params(model, init_checkpoint=None):
                 input_mask=dummy_input,
                 type_ids=dummy_input,
                 masked_lm_positions=dummy_input,
-                switch=False,
+                switch=switch,
                 deterministic=True,
             )
 
@@ -148,7 +148,10 @@ def main(argv):
     print(f" - {input_files[0]}")
 
     model = modeling.BertForPreTraining(config=config.model)
-    initial_params = get_initial_params(model, init_checkpoint=config.init_checkpoint)
+    if config.model.attention_type == "LinEVAMHA":
+        initial_params = get_initial_params(model, True, init_checkpoint=config.init_checkpoint)
+    else:
+        initial_params = get_initial_params(model, False, init_checkpoint=config.init_checkpoint)
     tx = training.create_optimizer(
         optimizer=config.optimizer,
         b1=config.adam_beta1,
