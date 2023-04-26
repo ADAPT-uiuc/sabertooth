@@ -64,6 +64,10 @@ def get_config():
             "attention_type": config.attention_type,
             "downsampling_k": config.downsampling_k,
             "up_train" : config.up_train,
+            "num_landmarks": config.num_landmarks,
+            "window_size": config.window_size,
+            "overlap_window": config.overlap_window,
+            "use_t5_rpe": config.use_t5_rpe,
         }
     )
     config.model = model_config

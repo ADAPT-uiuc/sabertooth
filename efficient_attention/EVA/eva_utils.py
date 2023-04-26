@@ -6,7 +6,6 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 from jax.config import config
-config.update("jax_enable_x64", True)
 import flax.linen as nn
 
 import pdb
@@ -177,7 +176,7 @@ class T5RelativePositionBias(nn.Module):
         val_if_large = max_exact + (
             jnp.log(n.astype(float) / max_exact) / math.log(max_distance / max_exact) * (num_buckets - max_exact)
         ).astype(jnp.int64)
-        val_if_large = jnp.minimum(val_if_large, np.full_like(val_if_large, num_buckets - 1))
+        val_if_large = jnp.minimum(val_if_large, jnp.full_like(val_if_large, num_buckets - 1))
 
         ret += jnp.where(is_small, n, val_if_large)
         return ret
