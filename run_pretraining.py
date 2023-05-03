@@ -28,6 +28,7 @@ from absl import app, flags
 from flax.training import checkpoints
 from ml_collections.config_flags import config_flags
 from tensorflow.io import gfile
+import time
 
 import data
 import modeling
@@ -136,6 +137,31 @@ def compute_pretraining_stats(apply_fn, variables, batch):
     return stats
 
 
+def eval_helper(state, eval_iter, eval_fn, number, output_dir):
+    eval_stats = eval_fn(state, eval_iter)
+
+    eval_metrics = {
+        "loss": jnp.mean(eval_stats["loss"]),
+        "masked_lm_loss": jnp.mean(eval_stats["masked_lm_loss"]),
+        "next_sentence_loss": jnp.mean(eval_stats["next_sentence_loss"]),
+        "masked_lm_accuracy": jnp.sum(eval_stats["masked_lm_correct"])
+        / jnp.sum(eval_stats["masked_lm_total"]),
+        "next_sentence_accuracy": jnp.sum(eval_stats["next_sentence_correct"])
+        / jnp.sum(eval_stats["next_sentence_total"]),
+    }
+
+    eval_results = []
+    for name, val in sorted(eval_metrics.items()):
+        line = f"{name} = {val:.06f}"
+        print(line, flush=True)
+        eval_results.append(line)
+
+    eval_results_path = os.path.join(output_dir, f"eval_results_{number}.txt")
+    with gfile.GFile(eval_results_path, "w") as f:
+        for line in eval_results:
+            f.write(line + "\n")
+
+
 def main(argv):
     if len(argv) > 1:
         raise app.UsageError("Too many command-line arguments.")
@@ -190,6 +216,11 @@ def main(argv):
 
     if config.do_train:
         train_batch_size = config.train_batch_size
+        eval_iter = data_pipeline.get_inputs(batch_size=config.eval_batch_size)
+        eval_iter = itertools.islice(eval_iter, config.max_eval_steps)
+        eval_fn = training.create_eval_fn(
+            compute_pretraining_stats, sample_feature_name="input_ids"
+        )
         if jax.process_count() > 1:
             assert (
                 train_batch_size % jax.process_count() == 0
@@ -198,8 +229,11 @@ def main(argv):
         train_iter = data_pipeline.get_inputs(
             batch_size=train_batch_size, training=True
         )
+        time_cum = 0
+        val_num = 0
         train_step_fn = training.create_train_step(compute_pretraining_loss_and_metrics)
         for step, batch in zip(range(start_step, config.num_train_steps), train_iter):
+            time_start = time.time()
             state = train_step_fn(state, batch, False if step < (0.7 * 120000) else True)
             if jax.process_index() == 0 and (
                 step % config.save_checkpoints_steps == 0
@@ -214,40 +248,22 @@ def main(argv):
                 if not os.path.exists(tokenizer_path):
                     shutil.copy(config.tokenizer, tokenizer_path)
 
+            time_end = time.time()
+            time_cum += time_end - time_start
+
+            if (time_cum / 3600) > 1:
+                ## Over here we validate.
+                eval_helper(state, eval_iter, eval_fn, val_num, output_dir)
+                val_num += 1
+                time_cum = 0
+
+            if val_num >= 24:
+                break
+
         # With the current Rust data pipeline code, running more than one pipeline
         # at a time will lead to a hang. A simple workaround is to fully delete the
         # training pipeline before potentially starting another for evaluation.
         del train_iter
-
-    if config.do_eval:
-        eval_iter = data_pipeline.get_inputs(batch_size=config.eval_batch_size)
-        eval_iter = itertools.islice(eval_iter, config.max_eval_steps)
-        eval_fn = training.create_eval_fn(
-            compute_pretraining_stats, sample_feature_name="input_ids"
-        )
-        eval_stats = eval_fn(state, eval_iter)
-
-        eval_metrics = {
-            "loss": jnp.mean(eval_stats["loss"]),
-            "masked_lm_loss": jnp.mean(eval_stats["masked_lm_loss"]),
-            "next_sentence_loss": jnp.mean(eval_stats["next_sentence_loss"]),
-            "masked_lm_accuracy": jnp.sum(eval_stats["masked_lm_correct"])
-            / jnp.sum(eval_stats["masked_lm_total"]),
-            "next_sentence_accuracy": jnp.sum(eval_stats["next_sentence_correct"])
-            / jnp.sum(eval_stats["next_sentence_total"]),
-        }
-
-        eval_results = []
-        for name, val in sorted(eval_metrics.items()):
-            line = f"{name} = {val:.06f}"
-            print(line, flush=True)
-            eval_results.append(line)
-
-        eval_results_path = os.path.join(output_dir, "eval_results.txt")
-        with gfile.GFile(eval_results_path, "w") as f:
-            for line in eval_results:
-                f.write(line + "\n")
-
 
 if __name__ == "__main__":
     app.run(main)
