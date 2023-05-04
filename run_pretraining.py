@@ -253,6 +253,7 @@ def main(argv):
 
             if (time_cum / 3600) > 1:
                 ## Over here we validate.
+                print(f'Validating {val_num}')
                 eval_helper(state, eval_iter, eval_fn, val_num, output_dir)
                 val_num += 1
                 time_cum = 0
