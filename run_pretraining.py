@@ -161,12 +161,6 @@ def eval_helper(state, eval_iter, eval_fn, number, output_dir):
         for line in eval_results:
             f.write(line + "\n")
 
-def sync_times(time_cum):
-    x = jnp.array([time_cum])
-    y = jax.pmap(lambda x : jax.lax.all_gather(x))(x)
-
-    return jnp.minimum(y)
-
 def main(argv):
     if len(argv) > 1:
         raise app.UsageError("Too many command-line arguments.")
@@ -221,11 +215,6 @@ def main(argv):
 
     if config.do_train:
         train_batch_size = config.train_batch_size
-        eval_iter = data_pipeline.get_inputs(batch_size=config.eval_batch_size)
-        eval_iter = itertools.islice(eval_iter, config.max_eval_steps)
-        eval_fn = training.create_eval_fn(
-            compute_pretraining_stats, sample_feature_name="input_ids"
-        )
         if jax.process_count() > 1:
             assert (
                 train_batch_size % jax.process_count() == 0
@@ -241,10 +230,9 @@ def main(argv):
             time_start = time.time()
             state = train_step_fn(state, batch, False if step < (0.7 * 120000) else True)
             if jax.process_index() == 0 and (
-                step % config.save_checkpoints_steps == 0
-                or step == config.num_train_steps - 1
+                (time_cum / 3600) > 0.5 or step == 0
             ):
-                checkpoints.save_checkpoint(output_dir, state.unreplicate(), step)
+                checkpoints.save_checkpoint(output_dir, state.unreplicate(), step, overwrite=False)
                 config_path = os.path.join(output_dir, "config.json")
                 if not os.path.exists(config_path):
                     with open(config_path, "w") as f:
@@ -252,24 +240,22 @@ def main(argv):
                 tokenizer_path = os.path.join(output_dir, "sentencepiece.model")
                 if not os.path.exists(tokenizer_path):
                     shutil.copy(config.tokenizer, tokenizer_path)
+                time_cum = 0
 
             time_end = time.time()
             time_cum += time_end - time_start
-
-            if (sync_times(time_cum) / 3600) > 1:
-                ## Over here we validate.
-                print(f'Validating {val_num}')
-                eval_helper(state, eval_iter, eval_fn, val_num, output_dir)
-                val_num += 1
-                time_cum = 0
-
-            if val_num >= 24:
-                break
 
         # With the current Rust data pipeline code, running more than one pipeline
         # at a time will lead to a hang. A simple workaround is to fully delete the
         # training pipeline before potentially starting another for evaluation.
         del train_iter
+        if config.do_eval:
+            eval_iter = data_pipeline.get_inputs(batch_size=config.eval_batch_size)
+            eval_iter = itertools.islice(eval_iter, config.max_eval_steps)
+            eval_fn = training.create_eval_fn(
+                compute_pretraining_stats, sample_feature_name="input_ids"
+            )
+            eval_helper(state, eval_iter, eval_fn, val_num, output_dir)
 
 if __name__ == "__main__":
     app.run(main)

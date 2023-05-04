@@ -62,7 +62,7 @@ def get_config(config_string=""):
             # than this will be padded.
             "max_seq_length": 128,
             # The attention variant
-            "attention_type": "EVAMHA",
+            "attention_type": "LinEVAMHA",
             # The downsampling factor for low-rank methods.
             "downsampling_k" : 64,
             # Whether we up-train model for GLUE.

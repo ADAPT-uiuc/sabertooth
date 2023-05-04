@@ -17,13 +17,13 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "EVAMHA"
+    attn_type = "VanillaMHA"
     ## Downsampling factor 
     downsampling_k = 64
     ## Dropout for ffn
     ffn_dropout = 0.1
     ## Up_train flag for a 70-30 split
-    up_train = True
+    up_train = False 
     if config_string == "large":
         model_config = ml_collections.ConfigDict(
             {
@@ -81,7 +81,7 @@ def get_config(config_string="base"):
             # Initial checkpoint
             "init_checkpoint": "",
             # Input files
-            "input_files": ["/srv/local/shared/pre-train-mixture/wikibooks/part-*-of-00500.jsonl"],
+            "input_files": ["/srv/local/shared/pre-train-mixture/books1/epubtxt/*.epub.txt"],
             # Pre-trained tokenizer
             "tokenizer": "/srv/local/shared/pre-train-mixture/wikibooks_32k.model",
             # Whether to run training.
@@ -95,7 +95,7 @@ def get_config(config_string="base"):
             # Optimizer: either 'adam' or 'lamb
             "optimizer": "adam",
             # The base learning rate for Adam or LAMB.
-            "learning_rate": 1.7e-4, 
+            "learning_rate": 1e-4, 
             # The beta1 parameter for Adam or LAMB
             "adam_beta1": 0.9,
             # The beta2 parameter for Adam or LAMB
@@ -107,7 +107,7 @@ def get_config(config_string="base"):
             # Maximum gradient norm (for gradient clipping)
             "max_grad_norm": 1.0,
             # Number of training steps.
-            "num_train_steps": 120000,
+            "num_train_steps": 500000,
             # Number of warmup steps.
             "num_warmup_steps": 10000,
             # The maximum total input sequence length after tokenization.
