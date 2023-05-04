@@ -230,9 +230,9 @@ def main(argv):
             time_start = time.time()
             state = train_step_fn(state, batch, False if step < (0.7 * 120000) else True)
             if jax.process_index() == 0 and (
-                (time_cum / 3600) > 0.5 or step == 0
+                (time_cum / 3600) > 0.05 or step == 0
             ):
-                checkpoints.save_checkpoint(output_dir, state.unreplicate(), step, overwrite=False)
+                checkpoints.save_checkpoint(output_dir+f"/{val_num}", state.unreplicate(), step, overwrite=False)
                 config_path = os.path.join(output_dir, "config.json")
                 if not os.path.exists(config_path):
                     with open(config_path, "w") as f:
@@ -241,6 +241,7 @@ def main(argv):
                 if not os.path.exists(tokenizer_path):
                     shutil.copy(config.tokenizer, tokenizer_path)
                 time_cum = 0
+                val_num = 0
 
             time_end = time.time()
             time_cum += time_end - time_start
