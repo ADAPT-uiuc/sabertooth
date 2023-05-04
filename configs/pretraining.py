@@ -17,13 +17,15 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "VanillaMHA"
+    attn_type = "LinEVAMHA"
     ## Downsampling factor 
-    downsampling_k = 64
+    downsampling_k = 512
     ## Dropout for ffn
     ffn_dropout = 0.1
     ## Up_train flag for a 70-30 split
     up_train = False 
+    ## Eva specific parameters. ##
+    window_size = 16
     if config_string == "large":
         model_config = ml_collections.ConfigDict(
             {
@@ -43,7 +45,7 @@ def get_config(config_string="base"):
                 "downsampling_k": downsampling_k,
                 "up_train": up_train,
                 "use_t5_rpe": True,
-                "window_size": 16,
+                "window_size": window_size,
                 "num_landmarks": 16,
                 "overlap_window": False
             }
@@ -60,7 +62,7 @@ def get_config(config_string="base"):
                 "intermediate_size": 3072,
                 "hidden_dropout_prob": ffn_dropout,
                 "attention_probs_dropout_prob": 0.1,
-                "max_position_embeddings": 512,
+                "max_position_embeddings": 1024,
                 "type_vocab_size": 2,
                 "initializer_range": 0.02,
                 "layer_norm_eps": 1e-12,
@@ -68,7 +70,7 @@ def get_config(config_string="base"):
                 "downsampling_k": downsampling_k,
                 "up_train": up_train,
                 "use_t5_rpe": True,
-                "window_size": 16,
+                "window_size": window_size,
                 "num_landmarks": 16,
                 "overlap_window": False
             }
@@ -89,7 +91,7 @@ def get_config(config_string="base"):
             # Whether to run eval.
             "do_eval": True,
             # Total batch size for training.
-            "train_batch_size": 1024,
+            "train_batch_size": 64,
             # Total batch size for eval.
             "eval_batch_size": 64,
             # Optimizer: either 'adam' or 'lamb
@@ -113,7 +115,7 @@ def get_config(config_string="base"):
             # The maximum total input sequence length after tokenization.
             # Sequences longer than this will be truncated, and sequences shorter
             # than this will be padded.
-            "max_seq_length": 128,
+            "max_seq_length": 1024,
             # Maximum number of masked LM predictions per sequence.
             "max_predictions_per_seq": 20,
             # How often to save the model checkpoint.
