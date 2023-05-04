@@ -161,6 +161,11 @@ def eval_helper(state, eval_iter, eval_fn, number, output_dir):
         for line in eval_results:
             f.write(line + "\n")
 
+def sync_times(time_cum):
+    x = jnp.array([time_cum])
+    y = jax.pmap(lambda x : jax.lax.all_gather(x))(x)
+
+    return jnp.minimum(y)
 
 def main(argv):
     if len(argv) > 1:
@@ -251,7 +256,7 @@ def main(argv):
             time_end = time.time()
             time_cum += time_end - time_start
 
-            if (time_cum / 3600) > 1:
+            if (sync_times(time_cum) / 3600) > 1:
                 ## Over here we validate.
                 print(f'Validating {val_num}')
                 eval_helper(state, eval_iter, eval_fn, val_num, output_dir)
