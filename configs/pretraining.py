@@ -17,7 +17,7 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "LinEVAMHA"
+    attn_type = "VanillaMHA"
     ## Downsampling factor 
     downsampling_k = 512
     ## Dropout for ffn
@@ -89,7 +89,7 @@ def get_config(config_string="base"):
             # Whether to run training.
             "do_train": True, 
             # Whether to run eval.
-            "do_eval": True,
+            "do_eval": False,
             # Total batch size for training.
             "train_batch_size": 64,
             # Total batch size for eval.
