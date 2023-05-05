@@ -253,13 +253,13 @@ def main(argv):
         # at a time will lead to a hang. A simple workaround is to fully delete the
         # training pipeline before potentially starting another for evaluation.
         del train_iter
-        if config.do_eval:
-            eval_iter = data_pipeline.get_inputs(batch_size=config.eval_batch_size)
-            eval_iter = itertools.islice(eval_iter, config.max_eval_steps)
-            eval_fn = training.create_eval_fn(
-                compute_pretraining_stats, sample_feature_name="input_ids"
-            )
-            eval_helper(state, eval_iter, eval_fn, val_num, output_dir)
+    if config.do_eval:
+        eval_iter = data_pipeline.get_inputs(batch_size=config.eval_batch_size)
+        eval_iter = itertools.islice(eval_iter, config.max_eval_steps)
+        eval_fn = training.create_eval_fn(
+            compute_pretraining_stats, sample_feature_name="input_ids"
+        )
+        eval_helper(state, eval_iter, eval_fn, val_num, output_dir)
 
 if __name__ == "__main__":
     app.run(main)
