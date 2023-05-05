@@ -156,7 +156,7 @@ def eval_helper(state, eval_iter, eval_fn, number, output_dir):
         print(line, flush=True)
         eval_results.append(line)
 
-    eval_results_path = os.path.join(output_dir, f"eval_results_{number}.txt")
+    eval_results_path = os.path.join(output_dir, f"eval_results.txt")
     with gfile.GFile(eval_results_path, "w") as f:
         for line in eval_results:
             f.write(line + "\n")
@@ -212,7 +212,7 @@ def main(argv):
         max_seq_length=config.max_seq_length,
         max_predictions_per_seq=config.max_predictions_per_seq,
     )
-
+    
     if config.do_train:
         train_batch_size = config.train_batch_size
         if jax.process_count() > 1:

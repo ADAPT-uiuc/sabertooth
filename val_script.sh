@@ -1,13 +1,18 @@
 #! /bin/bash
 
 ## This will validate all the checkpoints.
-for ((i=0; i<24; i+=1))
+for ((i=0; i<20; i+=1))
 do
         dir="/home/ag82/sabertooth/output/pretrain_20230504_1358/${i}"
         cd $dir
         for file in $(ls)
         do
-            python run_pretraining.py --config=configs/pretraining.py --config.init_checkpoint="$dir/$file" --config.do_train=False --config.do_eval=True
-            python collator.py "$dir"
+            python /home/ag82/sabertooth/run_pretraining.py --config=/home/ag82/sabertooth/configs/pretraining.py --config.init_checkpoint="$dir/$file" --config.do_train=False --config.do_eval=True --output_dir $dir
+            python /home/ag82/sabertooth/collator.py "$dir"
         done
 done
+
+
+## For testing purposes only. 
+
+#python /home/ag82/sabertooth/run_pretraining.py --config=/home/ag82/sabertooth/configs/pretraining.py --config.init_checkpoint="/home/ag82/sabertooth/output/pretrain_20230504_1358/0/checkpoint_10579" --config.do_train=False --config.do_eval=True --output_dir "/home/ag82/sabertooth/output/pretrain_20230504_1358/0"
