@@ -69,7 +69,7 @@ def get_initial_params(model, switch, init_checkpoint=None):
     else:
 
         def initialize_model():
-            dummy_input = jnp.zeros((1, 128), dtype=jnp.int32)
+            dummy_input = jnp.zeros((1, 1024), dtype=jnp.int32)
             return model.init(
                 jax.random.PRNGKey(np.random.randint(2**16)),
                 input_ids=dummy_input,
@@ -137,7 +137,7 @@ def compute_pretraining_stats(apply_fn, variables, batch):
     return stats
 
 
-def eval_helper(state, eval_iter, eval_fn, number, output_dir):
+def eval_helper(state, eval_iter, eval_fn, output_dir):
     eval_stats = eval_fn(state, eval_iter)
 
     eval_metrics = {
@@ -243,7 +243,7 @@ def main(argv):
                 time_cum = 0
                 val_num += 1
 
-            if val_num >= 24:
+            if val_num >= 20:
                 break
 
             time_end = time.time()
@@ -259,7 +259,7 @@ def main(argv):
         eval_fn = training.create_eval_fn(
             compute_pretraining_stats, sample_feature_name="input_ids"
         )
-        eval_helper(state, eval_iter, eval_fn, val_num, output_dir)
+        eval_helper(state, eval_iter, eval_fn, output_dir)
 
 if __name__ == "__main__":
     app.run(main)

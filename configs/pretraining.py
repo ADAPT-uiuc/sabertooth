@@ -17,9 +17,9 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "VanillaMHA"
+    attn_type = "LinPerfMHA"
     ## Downsampling factor 
-    downsampling_k = 512
+    downsampling_k = 256
     ## Dropout for ffn
     ffn_dropout = 0.1
     ## Up_train flag for a 70-30 split
@@ -37,7 +37,7 @@ def get_config(config_string="base"):
                 "intermediate_size": 4096,
                 "hidden_dropout_prob": ffn_dropout,
                 "attention_probs_dropout_prob": 0.1,
-                "max_position_embeddings": 512,
+                "max_position_embeddings": 1024,
                 "type_vocab_size": 2,
                 "initializer_range": 0.02,
                 "layer_norm_eps": 1e-12,
@@ -97,7 +97,7 @@ def get_config(config_string="base"):
             # Optimizer: either 'adam' or 'lamb
             "optimizer": "adam",
             # The base learning rate for Adam or LAMB.
-            "learning_rate": 1e-4, 
+            "learning_rate": 1e-5, 
             # The beta1 parameter for Adam or LAMB
             "adam_beta1": 0.9,
             # The beta2 parameter for Adam or LAMB

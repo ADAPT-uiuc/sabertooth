@@ -3,7 +3,7 @@
 ## This will validate all the checkpoints.
 for ((i=0; i<20; i+=1))
 do
-        dir="/home/ag82/sabertooth/output/pretrain_20230504_1358/${i}"
+	dir="/home/ag82/sabertooth/output/pretrain_20230506_1309/${i}"
         cd $dir
         for file in $(ls)
         do

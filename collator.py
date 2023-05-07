@@ -9,5 +9,5 @@ with open(sys.argv[1] + f'/eval_results.txt', "r") as f:
         if strs[0] == "masked_lm_loss":
             answer = strs[2]
 
-with open("collated_val.txt", "a+") as f:
+with open("/home/ag82/sabertooth/collated_val.txt", "a+") as f:
     f.write(f'{answer}\n')
