@@ -50,15 +50,13 @@ class MHA(nn.Module):
 
         self.numerical_stabilizer = 0.001
 
-        downsampling_shape_128 = (self.downsampling_k, 128)
-        downsampling_shape_512 = (self.downsampling_k, 512)
+        downsampling_shape = (self.downsampling_k, 1024)
         mean = 0.0
         sd = float(1)/float(self.downsampling_k)
 
-        self.key_downsampling_mat_128 = self.param('key_downsample_mat_128', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_128, mean, sd)
-        self.key_downsampling_mat_512 = self.param('key_downsample_mat_512', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_512, mean, sd)
-        self.value_downsampling_mat_128 = self.param('value_downsample_mat_128', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_128, mean, sd)
-        self.value_downsampling_mat_512 = self.param('value_downsample_mat_512', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_512, mean, sd)
+        self.key_downsampling_mat = self.param('key_downsample_mat', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape, mean, sd)
+        self.value_downsampling_mat = self.param('value_downsample_mat', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape, mean, sd)
+
 
         ## Phi(x) = elu(x) + 1 in Linear Transformer.
         self.elu_feature_map = lambda x: nn.elu(x) + 1
@@ -95,12 +93,8 @@ class MHA(nn.Module):
         query, key, value = x
 
         assert all(len(i.shape) == 3 for i in x), "Incorrect size of input, should be [batch, seq length, hidden dimension]"
-        if (value.shape[1] == key.shape[1] == 128) and ((not self.up_train) or (self.up_train and switch)):
-            key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_128, key)
-            value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_128, value)
-        elif (value.shape[1] == key.shape[1] == 512) and ((not self.up_train) or (self.up_train and switch)):
-            key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_512, key)
-            value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_512, value)
+        key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat, key)
+        value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat, value)
 
         ## First, we map the queries keys and values.
         queries, keys, values = (self.dense_queries(query),
