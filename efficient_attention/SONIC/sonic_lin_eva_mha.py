@@ -49,15 +49,12 @@ class MHA(nn.Module):
 
 
     def setup(self):
-        downsampling_shape_128 = (self.downsampling_k, 128)
-        downsampling_shape_512 = (self.downsampling_k, 512)
+        downsampling_shape = (self.downsampling_k, 1024)
         mean = 0.0
         sd = float(1)/float(self.downsampling_k)
 
-        self.key_downsampling_mat_128 = self.param('key_downsample_mat_128', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_128, mean, sd)
-        self.key_downsampling_mat_512 = self.param('key_downsample_mat_512', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_512, mean, sd)
-        self.value_downsampling_mat_128 = self.param('value_downsample_mat_128', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_128, mean, sd)
-        self.value_downsampling_mat_512 = self.param('value_downsample_mat_512', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape_512, mean, sd)
+        self.key_downsampling_mat = self.param('key_downsample_mat', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape, mean, sd)
+        self.value_downsampling_mat = self.param('value_downsample_mat', lambda rng, shape, mean, sd: mean + sd * jax.random.normal(rng, shape=shape), downsampling_shape, mean, sd)
 
         self.dense_queries = DenseGeneral(axis=-1, dtype=self.dtype, param_dtype=self.param_dtype,
                                           features=(self.num_heads, self.head_dim), kernel_init=self.kernel_init,
@@ -171,12 +168,8 @@ class MHA(nn.Module):
         # pdb.set_trace()
 
         assert all(len(i.shape) == 3 for i in x), "Incorrect size of input, should be [batch, seq length, hidden dimension]"
-        if key.shape[1] == value.shape[1] == 128:
-            key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_128, key)
-            value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_128, value)
-        elif query.shape[1] == value.shape[1] == 512:
-            key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat_512, key)
-            value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat_512, value)
+        key = jnp.einsum('ks, bsd -> bkd', self.key_downsampling_mat, key)
+        value = jnp.einsum('ks, bsd -> bkd', self.value_downsampling_mat, value)
 
         if self.up_train and not switch:
             # Uptrain with Linformer attention
