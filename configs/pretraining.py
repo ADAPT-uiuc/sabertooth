@@ -19,7 +19,7 @@ def get_config(config_string="base"):
     ## Type of attention mechanism.
     attn_type = "LinPerfMHA"
     ## Downsampling factor 
-    downsampling_k = 256
+    downsampling_k = 64
     ## Dropout for ffn
     ffn_dropout = 0.1
     ## Up_train flag for a 70-30 split
@@ -81,7 +81,7 @@ def get_config(config_string="base"):
             # Configuration for the model
             "model": model_config,
             # Initial checkpoint
-            "init_checkpoint": "",
+           "init_checkpoint": "",
             # Input files
             "input_files": ["/srv/local/shared/pre-train-mixture/books1/epubtxt/*.epub.txt"],
             # Pre-trained tokenizer
@@ -97,7 +97,7 @@ def get_config(config_string="base"):
             # Optimizer: either 'adam' or 'lamb
             "optimizer": "adam",
             # The base learning rate for Adam or LAMB.
-            "learning_rate": 1e-5, 
+            "learning_rate": 5e-5, 
             # The beta1 parameter for Adam or LAMB
             "adam_beta1": 0.9,
             # The beta2 parameter for Adam or LAMB

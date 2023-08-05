@@ -118,7 +118,6 @@ def moving_window(matrix, size):
 
 
 def window_1d_partition(x, window_size, ext_window_size=0, pad_val=0):
-    pdb.set_trace()
     b, h, n, d = x.shape
     n_groups = n // window_size
     if ext_window_size > 0:
@@ -177,7 +176,7 @@ class T5RelativePositionBias(nn.Module):
         val_if_large = max_exact + (
             jnp.log(n.astype(float) / max_exact) / math.log(max_distance / max_exact) * (num_buckets - max_exact)
         ).astype(jnp.int64)
-        val_if_large = jnp.minimum(val_if_large, np.full_like(val_if_large, num_buckets - 1))
+        val_if_large = jnp.minimum(val_if_large, jnp.full_like(val_if_large, num_buckets - 1))
 
         ret += jnp.where(is_small, n, val_if_large)
         return ret

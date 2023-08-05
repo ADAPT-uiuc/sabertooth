@@ -1,9 +1,9 @@
 #! /bin/bash
 
 ## This will validate all the checkpoints.
-for ((i=0; i<20; i+=1))
+for ((i=0; i<11; i+=1))
 do
-	dir="/home/ag82/sabertooth/output/pretrain_20230506_1309/${i}"
+	dir="/home/ag82/sabertooth/output/pretrain_20230513_1445/${i}"
         cd $dir
         for file in $(ls)
         do
