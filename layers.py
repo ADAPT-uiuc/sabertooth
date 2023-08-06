@@ -94,7 +94,7 @@ class SelfAttention(nn.SelfAttention):
     """Self-attention, but expecting a different format for mask."""
 
     @nn.compact
-    def __call__(self, hidden_states, mask=None, *, deterministic=False):
+    def __call__(self, hidden_states, switch, mask=None, *, deterministic=False):
         # Attention mask input has mask.shape == (batch_size, kv_length)
         # Flax instead expects mask.shape == (batch_size, 1, 1, kv_length)
         if mask is not None:
