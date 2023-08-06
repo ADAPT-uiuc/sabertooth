@@ -17,10 +17,9 @@ import ml_collections
 
 def get_config(config_string="base"):
     ## Type of attention mechanism.
-    attn_type = "EVAMHA"
+    attn_type = "LinPerfMHA"
     ## Downsampling factor 
-    downsampling_k = 64
-    ## Dropout for ffn
+    downsampling_k = 64 ## Dropout for ffn
     ffn_dropout = 0.1
     ## Up_train flag for a 70-30 split
     up_train = True
