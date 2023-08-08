@@ -67,12 +67,12 @@ class MHA(nn.Module):
 
         mean = 0
         sd = 1
-        key = self.make_rng('internal_initializer')
-        self.random_mat = mean + sd * jax.random.normal(key, shape=random_mat_shape)
+        rnd_key_seed = jax.random.split(self.make_rng('internal_initializer'), 3)
+        self.random_mat = mean + sd * jax.random.normal(rnd_key_seed[0], shape=random_mat_shape)
 
         ## Now we define two scaling factors, required for normalisation. ##
-        self.alpha_one = jax.random.normal(key, shape=(1,))
-        self.alpha_two = jax.random.normal(key, shape=(1,))
+        self.alpha_one = jax.random.normal(rnd_key_seed[1], shape=(1,))
+        self.alpha_two = jax.random.normal(rnd_key_seed[2], shape=(1,))
 
         ## This is for contracting from: (b, s, n, h) back to: (b, s, model_dimension). ##
         self.dense_out = DenseGeneral(features=self.hidden_dim,
