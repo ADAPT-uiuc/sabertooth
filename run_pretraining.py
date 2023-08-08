@@ -70,8 +70,7 @@ def get_initial_params(model, switch, init_checkpoint=None):
         def initialize_model():
             dummy_input = jnp.zeros((1, 128), dtype=jnp.int32)
             return model.init(
-                {'params': jax.random.PRNGKey(np.random.randint(2**16)),
-                 'internal_initializer': jax.random.PRNGKey(np.random.randint(2**15))},
+                jax.random.PRNGKey(np.random.randint(2**16)), 
                 input_ids=dummy_input,
                 input_mask=dummy_input,
                 type_ids=dummy_input,
