@@ -163,7 +163,7 @@ class FastSelfAttention(nn.Module):
         queries, keys, values = hidden_states, hidden_states, hidden_states
         ## We must do this because make_rng values are not guaranteed to be immutable (unlike params).
         ## Even though we, in code, do not re-initialize using the rngkey.
-        attn = self.mha([queries, keys, values], switch, train=not deterministic, rngs={'internal_initializer' : jax.random.PRNGKey(2**15)})
+        attn = self.mha([queries, keys, values], switch, train=not deterministic)
         return attn
 
 
