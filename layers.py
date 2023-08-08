@@ -28,6 +28,7 @@ from efficient_attention.Transformers_are_RNNs.RNNs_mha import MHA as RNNsMHA
 from efficient_attention.SONIC.sonic_lin_RNNs_mha import MHA as LinRNNsMHA
 from efficient_attention.EVA.eva_mha import MHA as EVAMHA
 from efficient_attention.SONIC.sonic_lin_eva_mha import MHA as LinEVAMHA
+from efficient_attention.Synthesizer.synthesizer_mha import MHA as SynthMHA
 
 def gelu(x):
     return jax.nn.gelu(x, approximate=False)
@@ -146,6 +147,9 @@ class FastSelfAttention(nn.Module):
                                  dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k,
                                  up_train=self.up_train, use_t5_rpe=self.use_t5_rpe, window_size=self.window_size,
                                  num_landmarks=self.num_landmarks, overlap_window=self.overlap_window)
+        elif self.attention_type == "SynthMHA":
+            self.mha = SynthMHA(hidden_dim=self.hidden_dim, head_dim=self.head_dim, num_heads=self.num_heads,
+                                  dropout=self.dropout, mask=False, up_train=self.up_train)
         else:
             raise Exception("Incorrect input of attention_type!")
 
