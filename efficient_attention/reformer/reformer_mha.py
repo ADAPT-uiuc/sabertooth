@@ -332,8 +332,7 @@ class MHA(nn.Module):
 
     # project inputs_q to multi-headed q/k/v
     # dimensions are then [bs, dims..., n_heads, n_features_per_head]
-    query, key, value = (self.dense_query(inputs_q),
-                    self.dense_key(inputs_k), self.dense_value(inputs_v))
+    query, _, value = (self.dense_query(inputs_q),self.dense_value(inputs_v))
 
     attn = jax.vmap(lsh_attention_single_batch, in_axes=(0, 0, None, None))
     out = attn(query, value, self.n_buckets, self.n_hashes)
@@ -342,6 +341,3 @@ class MHA(nn.Module):
     out = out[:, :qlength, :, :]
     out = self.dense_out(out)
     return out
-
-
-
