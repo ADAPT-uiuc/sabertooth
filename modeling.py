@@ -148,9 +148,9 @@ class BertModel(nn.Module):
         hidden_states = embeddings
 
         mask = input_mask.astype(jnp.int32)
-        for transformer_block in self.encoder_layers:
+        for layer_num, transformer_block in enumerate(self.encoder_layers):
             hidden_states = transformer_block(
-                hidden_states, mask, switch, deterministic=deterministic
+                hidden_states, mask, switch, layer_num, deterministic=deterministic
             )
         pooled_output = self.pooler(hidden_states[:, 0])
         pooled_output = jnp.tanh(pooled_output)

@@ -18,6 +18,42 @@ Array = Any
 
 import pdb ## For debugging purposes only.
 
+
+def compute_svd(queries, keys, layer_number):
+    ## Over here we compute the queries*keys^T product.
+    attn = jnp.einsum('bqnh, bknh -> bnqk', queries, keys)
+
+    svd_map = {}
+
+    svd_average = {}
+
+    ## Now we compute the singular value decomposition. over all the heads. ##
+    for batch in range(attn.shape[0]):
+
+        ## Populate all the heads. ##
+        for head in range(attn.shape[1]):
+            s = jnp.linalg.svd(attn[batch, head, :, :], compute_uv=False)
+            if (batch, head) not in svd_map:
+                svd_map[(batch, head)] = set()
+            
+            for singular_value in s:
+                if singular_value != 0:
+                    svd_map[(batch, head)].add(singular_value)
+
+        ## Now, we compute the running average as well. ##
+        for head in range(attn.shape[1]):
+            if head not in svd_average:
+                svd_average[head] = 0
+
+            num_unique = len(svd_map[(batch, head)]) 
+            new_average = (num_unique + svd_average[head]*batch)/(batch+1)
+            svd_average[head] = new_average
+    
+    ## Finally, we print the svd_average of each head. 
+    for head, avg_rank in svd_average:
+        print(f'head number: {head}, average rank: {avg_rank}, layer_number: {layer_number}')
+
+
 class MHA(nn.Module):
     hidden_dim : int
     head_dim : int
@@ -42,8 +78,10 @@ class MHA(nn.Module):
     value_kernel_init = jax.nn.initializers.glorot_normal
     """
 
+    ### We ONLY pass the layer_number into the self-attention mechanism. ###
+
     @nn.compact
-    def __call__(self, x, step, *, train):
+    def __call__(self, x, step, layer_number, *, train):
         ## Jax complains about passing in multiple arguments.
         ## So we do the hack of concatenating the queries, keys and values into a list and unpacking it.
         query, key, value = x
@@ -70,6 +108,9 @@ class MHA(nn.Module):
         ## We then re-transform the queries and the keys.
         queries = nn.relu(queries) + self.numerical_stabilizer
         keys = nn.relu(keys) + self.numerical_stabilizer
+
+        ## Over here we do the SVD check. ##
+        compute_svd(queries, keys, layer_number)
 
         ## We then do a transposition. ##
         queries = jnp.transpose(queries, [1, 0, 2, 3])

@@ -249,5 +249,6 @@ def main(argv):
                 f.write(line + "\n")
 
 
-if __name__ == "__main__":
-    app.run(main)
+with jax.disable_jit():
+    if __name__ == "__main__":
+        app.run(main)
