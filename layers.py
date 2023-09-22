@@ -179,7 +179,7 @@ class TransformerBlock(nn.Module):
 
     def __call__(self, hidden_states, mask, switch, layer_num, *, deterministic=False):
         attention_output = self.self_attention(
-            hidden_states, switch, mask, layer_num, deterministic=deterministic
+            hidden_states, switch, layer_num, mask, deterministic=deterministic
         )
         attention_output = self.self_attention_dropout(
             attention_output, deterministic=deterministic
