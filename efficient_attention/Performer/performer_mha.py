@@ -5,6 +5,7 @@ import jax.numpy as jnp
 
 import flax.linen as nn
 from flax.linen.linear import DenseGeneral, default_kernel_init
+from jax import lax
 
 import functools
 from typing import (Any, Callable, Optional, Tuple)
@@ -37,8 +38,9 @@ def compute_svd(queries, keys, layer_number):
                 svd_map[(batch, head)] = set()
             
             for singular_value in s:
-                if singular_value != 0:
-                    svd_map[(batch, head)].add(singular_value)
+                lax.cond(singular_value != 0, lambda x : svd_map[(batch, head)].add(x), lambda x: None, singular_value)
+                #if singular_value != 0:
+                #    svd_map[(batch, head)].add(singular_value)
 
         ## Now, we compute the running average as well. ##
         for head in range(attn.shape[1]):
