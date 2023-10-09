@@ -26,6 +26,10 @@ from flax.training.checkpoints import restore_checkpoint
 from flax.training.common_utils import onehot
 from ml_collections import ConfigDict
 
+import sys
+sys.path.append('/home/yy28/rsync/structured-sparsity/jax-extend')
+import sparse_attention
+from efficient_attention.Sparsity.custom_kernel import MHA as SparseMHA
 import layers
 
 ACT2FN = {
@@ -94,12 +98,34 @@ class BertModel(nn.Module):
                 kernel_init=get_kernel_init(self.config),
                 bias_init=nn.initializers.zeros,
             )
-        else:
+        elif self.config.attention_type == "SparseMHA":
             build_self_attention = functools.partial(
                 layers.FastSelfAttention,
+                batch_size=self.config.batch_size,
+                sequence_length=self.config.sequence_length,
                 hidden_dim=self.config.hidden_size,
                 head_dim=int(self.config.hidden_size / self.config.num_attention_heads),
                 num_heads=self.config.num_attention_heads,
+                sparsity_param=self.config.sparsity_param,
+                dropout=self.config.attention_probs_dropout_prob,
+                downsampling_k=self.config.downsampling_k,
+                attention_type=self.config.attention_type,
+                up_train=self.config.up_train,
+                num_landmarks=self.config.num_landmarks,
+                window_size=self.config.window_size,
+                use_t5_rpe=self.config.use_t5_rpe,
+                overlap_window=self.config.overlap_window,
+                sparse_kernel=self.config.sparse_kernel
+            )
+        else:
+            build_self_attention = functools.partial(
+                layers.FastSelfAttention,
+                batch_size=self.config.batch_size,
+                sequence_length=self.config.sequence_length,
+                hidden_dim=self.config.hidden_size,
+                head_dim=int(self.config.hidden_size / self.config.num_attention_heads),
+                num_heads=self.config.num_attention_heads,
+                sparsity_param=self.config.sparsity_param,
                 dropout=self.config.attention_probs_dropout_prob,
                 downsampling_k=self.config.downsampling_k,
                 attention_type=self.config.attention_type,
@@ -109,6 +135,7 @@ class BertModel(nn.Module):
                 use_t5_rpe=self.config.use_t5_rpe,
                 overlap_window=self.config.overlap_window
             )
+
 
         self.encoder_layers = [
             layers.TransformerBlock(
@@ -136,6 +163,7 @@ class BertModel(nn.Module):
         deterministic: bool = False,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """Applies BERT model on the inputs."""
+        time1 = time.time()
 
         word_embeddings = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(input_ids)
@@ -147,14 +175,16 @@ class BertModel(nn.Module):
 
         hidden_states = embeddings
 
+        time2 = time.time()
         mask = input_mask.astype(jnp.int32)
         for transformer_block in self.encoder_layers:
             hidden_states = transformer_block(
                 hidden_states, mask, switch, deterministic=deterministic
             )
+        time3 = time.time()
         pooled_output = self.pooler(hidden_states[:, 0])
         pooled_output = jnp.tanh(pooled_output)
-
+        print(f"embedding time: {time2 - time1}, kernel time: {time3 - time2}")
         return hidden_states, pooled_output
 
     def get_embedding_table(self, **unused_kwargs):
@@ -377,35 +407,48 @@ class BertForPreTraining(nn.Module):
         params = flax.core.freeze(params)
         return params
 
-'''
 from jax import random
 
-hidden_dim = 8
-head_dim = 4
-num_heads = 2
+hidden_dim = 768
+head_dim = 64
+num_heads = 12
 dropout = 0.1
-sequence_length = 128
-ffn_size = 10
+sequence_length = 1024
+ffn_size = 3072
 num_layers = 2
 vocabulary_size = 10
 downsampling_k = 3
-batch_size = 2
+batch_size = 32
+sparsity_param = 2
+sparse_kernel = sparse_attention.SparseAttention(batch_size=batch_size,
+                                                           sequence_length=sequence_length,
+                                                           num_heads=num_heads,
+                                                           hidden_dim=hidden_dim,
+                                                           sparsity_param=sparsity_param)
 
 import configs.pretraining as cf
+import time
 config = cf.get_config()
 modelconfig = config.model
-modelconfig.attention_type = "LinEVAMHA"
-modelconfig.hidden_size = 8
-modelconfig.num_attention_heads = 2
-modelconfig.num_landmarks = 16
-modelconfig.window_size = 16
+modelconfig.attention_type = "SparseMHA"
+modelconfig.hidden_size = hidden_dim
+modelconfig.num_hidden_layers = 12
+modelconfig.num_attention_heads = num_heads
+modelconfig.num_landmarks = 1
+modelconfig.window_size = 1
 modelconfig.use_t5_rpe = True
 modelconfig.overlap_window = True
+modelconfig.batch_size = batch_size
+modelconfig.sequence_length = sequence_length
+modelconfig.sparsity_param = sparsity_param
+modelconfig.sparse_kernel = sparse_kernel
+modelconfig.max_position_embeddings = sequence_length
+modelconfig.intermediate_size = ffn_size
 
-model = BertForPreTraining(modelconfig)
-x = jnp.round(random.uniform(random.PRNGKey(44), (batch_size, sequence_length))).astype(jnp.int32)
+model = BertModel(modelconfig)
+x = jnp.round(random.uniform(random.PRNGKey(44), (batch_size, sequence_length))).astype(jnp.float32)
 mask = jnp.ones((batch_size, sequence_length), dtype=jnp.int32)
-y = jnp.round(random.uniform(random.PRNGKey(44), (batch_size, sequence_length))).astype(jnp.int32)
+y = jnp.round(random.uniform(random.PRNGKey(44), (batch_size, sequence_length))).astype(jnp.float32)
 param_key = random.PRNGKey(42)
 dropout_key = random.PRNGKey(43)
 params = model.init(
@@ -415,6 +458,12 @@ params = model.init(
                 type_ids=y,
                 deterministic=False,
             )["params"]
+
+
+start_time = time.time()
 attn = model.apply({'params': params}, input_ids=x, input_mask=mask, type_ids=y, rngs={'dropout': dropout_key})
-print(attn)
-'''
+attn2 = model.apply({'params': params}, input_ids=x, input_mask=mask, type_ids=y, rngs={'dropout': dropout_key})
+attn3 = model.apply({'params': params}, input_ids=x, input_mask=mask, type_ids=y, rngs={'dropout': dropout_key})
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"run time of {modelconfig.attention_type} kernel: {elapsed_time}s", )

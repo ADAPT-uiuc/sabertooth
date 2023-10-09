@@ -29,6 +29,11 @@ from efficient_attention.SONIC.sonic_lin_RNNs_mha import MHA as LinRNNsMHA
 from efficient_attention.EVA.eva_mha import MHA as EVAMHA
 from efficient_attention.SONIC.sonic_lin_eva_mha import MHA as LinEVAMHA
 
+import sys
+sys.path.append('/home/yy28/rsync/structured-sparsity/jax-extend')
+import sparse_attention
+from efficient_attention.Sparsity.custom_kernel import MHA as SparseMHA
+
 def gelu(x):
     return jax.nn.gelu(x, approximate=False)
 
@@ -102,9 +107,12 @@ class SelfAttention(nn.SelfAttention):
         return super().__call__(hidden_states, mask, deterministic=deterministic)
 
 class FastSelfAttention(nn.Module):
+    batch_size: int
+    sequence_length: int
     hidden_dim: int
     head_dim: int
     num_heads: int
+    sparsity_param: int
     dropout: float
     attention_type: str
     downsampling_k: int = 64
@@ -113,6 +121,7 @@ class FastSelfAttention(nn.Module):
     overlap_window: bool = False
     window_size: int = 2
     num_landmarks: int = 49
+    sparse_kernel: Any = None
     def setup(self):
         ## We first have the pre-ambulatory initialization.
         # pdb.set_trace()
@@ -146,6 +155,8 @@ class FastSelfAttention(nn.Module):
                                  dropout=self.dropout, mask=False, downsampling_k=self.downsampling_k,
                                  up_train=self.up_train, use_t5_rpe=self.use_t5_rpe, window_size=self.window_size,
                                  num_landmarks=self.num_landmarks, overlap_window=self.overlap_window)
+        elif self.attention_type == "SparseMHA":
+            self.mha = SparseMHA(self.batch_size, self.sequence_length, self.hidden_dim, self.head_dim, self.num_heads, calc_sparse_attention=self.sparse_kernel)
         else:
             raise Exception("Incorrect input of attention_type!")
 
